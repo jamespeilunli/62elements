@@ -19,8 +19,12 @@ export default function Component() {
                 </p>
               </div>
               <div className="space-x-4">
-                <Button>Get Started</Button>
-                <Button variant="outline">Learn More</Button>
+                <Link href="/library">
+                  <Button variant="outline">Get Started</Button>
+                </Link>
+                <Link href="/about">
+                  <Button variant="outline">Learn More</Button>
+                </Link>
               </div>
             </div>
           </div>
@@ -66,7 +70,7 @@ export default function Component() {
               <div className="w-full max-w-sm space-y-2">
                 <form className="flex space-x-2">
                   <Input className="max-w-lg flex-1" placeholder="Enter your email" type="email" />
-                  <Button type="submit">Sign Up</Button>
+                  <Button variant="outline" type="submit">Sign Up</Button>
                 </form>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   By signing up, you agree to our{" "}

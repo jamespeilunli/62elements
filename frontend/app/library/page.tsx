@@ -15,7 +15,7 @@ export default function PopularFlashcardSets() {
     <div className="flex flex-col min-h-screen bg-background">
 
       <main className="flex-1 py-12 container mx-auto px-4">
-        <h1 className="text-3xl font-bold mb-6">Flashcard Library</h1>
+        <h1 className="text-3xl font-bold mb-6">Public Flashcard Library</h1>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {popularSets.map((set) => (
             <Card key={set.id} className="flex flex-col justify-between">
@@ -31,20 +31,22 @@ export default function PopularFlashcardSets() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="w-full">Study Now</Button>
+                <Link href="/study">
+                  <Button>Study Now</Button>
+                </Link>
               </CardFooter>
             </Card>
           ))}
         </div>
         <div className="flex justify-center items-center space-x-2 mt-8">
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" disabled>
             <ChevronLeft className="h-4 w-4" />
             <span className="sr-only">Previous page</span>
           </Button>
           <p className="text-sm">
             Page <span className="font-medium">1</span> of <span className="font-medium">1</span>
           </p>
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" disabled>
             <ChevronRight className="h-4 w-4" />
             <span className="sr-only">Next page</span>
           </Button>
