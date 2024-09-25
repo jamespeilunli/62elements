@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ChevronLeft, ChevronRight, Eye, PenTool, Brain, Puzzle, Star, Edit } from "lucide-react"
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useAnimation } from 'framer-motion'
 
 const studyModes = [
   { name: 'Preview', icon: Eye },
@@ -31,20 +31,31 @@ export default function StudySet() {
   const [direction, setDirection] = useState(0)
   const [activeFilter, setActiveFilter] = useState('All')
   const [starredCards, setStarredCards] = useState<number[]>([])
+  const controls = useAnimation();
+  
+  const handleNextCard = async () => {
+    if (currentCardIndex < flashcards.length - 1) {
+      setDirection(1);
+  
+      await controls.start({ x: -100, opacity: 0, transition: { duration: 0.3 } });
+      controls.set({ x: 100, opacity: 0 });
+      await controls.start({ x: 0, opacity: 1, transition: { duration: 0.3 } });
 
-  const handlePrevCard = () => {
-    if (currentCardIndex > 0) {
-      setDirection(-1)
-      setCurrentCardIndex((prevIndex) => prevIndex - 1)
-      setIsFlipped(false)
+      setCurrentCardIndex((prevIndex) => prevIndex + 1);
+      setIsFlipped(false);
     }
   }
 
-  const handleNextCard = () => {
-    if (currentCardIndex < flashcards.length - 1) {
-      setDirection(1)
-      setCurrentCardIndex((prevIndex) => prevIndex + 1)
-      setIsFlipped(false)
+  const handlePrevCard = async () => {
+    if (currentCardIndex > 0) {
+      setDirection(-1);
+  
+      await controls.start({ x: 100, opacity: 0, transition: { duration: 0.3 } });
+      controls.set({ x: -100, opacity: 0 });
+      await controls.start({ x: 0, opacity: 1, transition: { duration: 0.3 } });
+
+      setCurrentCardIndex((prevIndex) => prevIndex - 1);
+      setIsFlipped(false);
     }
   }
 
@@ -84,12 +95,9 @@ export default function StudySet() {
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={currentCardIndex}
-              initial={{ opacity: 0, x: direction > 0 ? 100 : -100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: direction > 0 ? -100 : 100 }}
-              transition={{ duration: 0.3 }}
+              animate={controls}
               className="mx-4 w-full"
-            >
+            > 
               <Card 
                 className="w-full h-64 cursor-pointer perspective-1000"
                 onClick={toggleCardFlip}
