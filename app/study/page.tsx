@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -17,20 +17,30 @@ const studyModes = [
 
 const filterCategories = ['New', 'Challenging', 'Familiar', 'Proficient', 'Starred']
 
-// Mock flashcards data
-const flashcards = [
-  { id: 1, term: 'What is the capital of France?', definition: 'Paris', difficulty: 'Familiar' },
-  { id: 2, term: 'Who painted the Mona Lisa?', definition: 'Leonardo da Vinci', difficulty: 'Challenging' },
-  { id: 3, term: 'What is the chemical symbol for gold?', definition: 'Au', difficulty: 'Proficient' },
-  { id: 4, term: 'What is the multiplicative identity?', definition: '1', difficulty: 'New' },
-]
-
 export default function StudySet() {
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
   const [direction, setDirection] = useState(0)
   const [activeFilter, setActiveFilter] = useState('All')
   const [starredCards, setStarredCards] = useState<number[]>([])
+  const [flashcards, setFlashcards] = useState<{ id: number, set: number, term: string, definition: string, difficulty: string}[]>([
+    { id: 1, set:-1, term: 'Loading...', definition: 'Loading...', difficulty: 'New' },
+  ])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const res = await fetch('/api/get-set');
+      const data = await res.json();
+
+      let new_data = data.map((flashcard: { id: number, set: number, term: string, definition: string}) => ({
+        id: flashcard.id, set: flashcard.set, term: flashcard.term, definition: flashcard.definition, difficulty: "New"
+      }));
+
+      setFlashcards((prevFlashcards) => new_data);
+    };
+
+    fetchData();
+  }, []);
 
   const handlePrevCard = () => {
     if (currentCardIndex > 0) {
