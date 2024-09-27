@@ -41,8 +41,8 @@ export default function PracticePage() {
   const shuffleCards = () => {
     setShuffledCards([...flashcards].sort(() => Math.random() - 0.5))
     setCurrentCardIndex(0)
-    setScore(0)
-    setTotalAttempts(0)
+    //setScore(0)
+    //setTotalAttempts(0)
     setShowAnswer(false)
   }
 
