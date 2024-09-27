@@ -32,6 +32,7 @@ export default function PracticePage() {
   const [totalAttempts, setTotalAttempts] = useState(0)
   const [shuffledCards, setShuffledCards] = useState(flashcards)
   const [isClient, setIsClient] = useState(false)
+  const [answerSubmitted, setAnswerSubmitted] = useState(false)
 
   useEffect(() => {
     setIsClient(true)
@@ -56,7 +57,7 @@ export default function PracticePage() {
     const options = [correctAnswer]
     while (options.length < 4) {
       const randomCard = flashcards[Math.floor(Math.random() * flashcards.length)]
-      const randomAnswer = isTermQuestion ? randomCard.definition : randomCard.term
+      const randomAnswer = isTermQuestion ? randomCard.term : randomCard.definition 
       if (!options.includes(randomAnswer)) {
         options.push(randomAnswer)
       }
@@ -67,15 +68,42 @@ export default function PracticePage() {
   const options = generateOptions()
 
   const handleAnswer = (answer: string) => {
+    console.log(answer)
     setUserAnswer(answer)
     setShowAnswer(true)
     setTotalAttempts(totalAttempts + 1)
     if (answer === correctAnswer) {
       setScore(score + 1)
     }
+    setAnswerSubmitted(true);
   }
 
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (answerSubmitted) {
+        if (event.key === 'Enter') {
+          nextQuestion();
+        }
+      } else if (userAnswer === '' && answerType === "multiple-choice") {
+        for (let i of ['1','2','3','4']) {
+          if (event.key === i) {
+            console.log(options)
+            handleAnswer(options[parseInt(i)-1])
+          }
+        }
+      }
+    };
+
+  window.addEventListener('keydown', handleKeyDown);
+
+  return () => {
+    window.removeEventListener('keydown', handleKeyDown);
+  };
+}, [answerSubmitted, userAnswer, answerType, options]);
+
   const nextQuestion = () => {
+    setAnswerSubmitted(false);
     if (currentCardIndex < shuffledCards.length - 1) {
       setCurrentCardIndex(currentCardIndex + 1)
     } else {
@@ -124,13 +152,23 @@ export default function PracticePage() {
           <h2 className="text-xl font-semibold mb-4">{question}</h2>
           {!showAnswer && answerType === 'multiple-choice' && (
             <RadioGroup onValueChange={handleAnswer}>
+            <div className="space-y-3">
               {options.map((option, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option} id={`option-${index}`} />
-                  <Label htmlFor={`option-${index}`}>{option}</Label>
+                <div key={index} className="flex items-center space-x-3">
+                  <RadioGroupItem value={option} id={`option-${index}`} className="peer sr-only" />
+                  <Label 
+                    htmlFor={`option-${index}`} 
+                    className="flex items-center space-x-3 text-sm cursor-pointer flex-grow"
+                  >
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full border-2 border-primary text-primary flex items-center justify-center text-sm font-medium transition-colors peer-checked:bg-primary peer-checked:text-primary-foreground">
+                      {index + 1}
+                    </div>
+                    <span>{option}</span>
+                  </Label>
                 </div>
               ))}
-            </RadioGroup>
+            </div>
+          </RadioGroup>
           )}
           {!showAnswer && answerType === 'short-answer' && (
             <form onSubmit={(e) => { e.preventDefault(); handleAnswer(userAnswer); }}>
