@@ -33,8 +33,13 @@ export default function PracticePage() {
   const [shuffledCards, setShuffledCards] = useState(flashcards)
   const [isClient, setIsClient] = useState(false)
   const [answerSubmitted, setAnswerSubmitted] = useState(false)
+  const [isTermQuestion, setIsTermQuestion] = useState(true)
 
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const newIsTermQuestion = () => {
+    return quizMode === 'term-to-definition' || (quizMode === 'both' && Math.random() < 0.5)
+  }
 
   useEffect(() => {
     setIsClient(true)
@@ -51,14 +56,19 @@ export default function PracticePage() {
   const shuffleCards = () => {
     setShuffledCards([...flashcards].sort(() => Math.random() - 0.5))
     setCurrentCardIndex(0)
-    //setScore(0)
-    //setTotalAttempts(0)
     setShowAnswer(false)
+    setIsTermQuestion(newIsTermQuestion())
   }
-
   const currentCard = shuffledCards[currentCardIndex]
-  const isTermQuestion = quizMode === 'term-to-definition' //|| (quizMode === 'both' && Math.random() < 0.5)
-
+  useEffect(() => {
+    // Determine if it's a term question when moving to a new card
+    setIsTermQuestion(newIsTermQuestion())
+  
+    // Reset other states as needed
+    setUserAnswer('')
+    setShowAnswer(false)
+  }, [currentCardIndex, quizMode])
+  
   const question = isTermQuestion ? currentCard.definition : currentCard.term 
   const correctAnswer = isTermQuestion ? currentCard.term : currentCard.definition 
 
@@ -77,7 +87,6 @@ export default function PracticePage() {
   const options = generateOptions()
 
   const handleAnswer = (answer: string) => {
-    console.log(answer)
     setUserAnswer(answer)
     setShowAnswer(true)
     setTotalAttempts(totalAttempts + 1)
@@ -86,7 +95,6 @@ export default function PracticePage() {
     }
     setAnswerSubmitted(true);
   }
-
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -98,7 +106,6 @@ export default function PracticePage() {
       } else if (userAnswer === '' && answerType === "multiple-choice") {
         for (let i of ['1','2','3','4']) {
           if (event.key === i) {
-            console.log(options)
             handleAnswer(options[parseInt(i)-1])
           }
         }
@@ -135,7 +142,7 @@ export default function PracticePage() {
             id="quiz-mode"
             value={quizMode}
             onChange={(e) => setQuizMode(e.target.value as QuizMode)}
-            className="border rounded p-2"
+            className="text-gray-700 border rounded p-2"
           >
             <option value="term-to-definition">Term to Definition</option>
             <option value="definition-to-term">Definition to Term</option>
