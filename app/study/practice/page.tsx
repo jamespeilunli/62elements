@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -34,10 +34,19 @@ export default function PracticePage() {
   const [isClient, setIsClient] = useState(false)
   const [answerSubmitted, setAnswerSubmitted] = useState(false)
 
+  const inputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     setIsClient(true)
     shuffleCards()
   }, [])
+
+  useEffect(() => {
+    if (answerType === 'short-answer' && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.value = "";
+    }
+  }, [answerType, currentCardIndex])
 
   const shuffleCards = () => {
     setShuffledCards([...flashcards].sort(() => Math.random() - 0.5))
@@ -82,8 +91,9 @@ export default function PracticePage() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (answerSubmitted) {
-        if (event.key === 'Enter') {
+        if (event.key === ' ' || event.key === "Enter") {
           nextQuestion();
+          event.preventDefault();
         }
       } else if (userAnswer === '' && answerType === "multiple-choice") {
         for (let i of ['1','2','3','4']) {
@@ -173,6 +183,7 @@ export default function PracticePage() {
           {!showAnswer && answerType === 'short-answer' && (
             <form onSubmit={(e) => { e.preventDefault(); handleAnswer(userAnswer); }}>
               <Input
+                ref={inputRef}
                 type="text"
                 value={userAnswer}
                 onChange={(e) => setUserAnswer(e.target.value)}
