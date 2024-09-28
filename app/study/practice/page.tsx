@@ -14,7 +14,7 @@ import { useState, useRef, useEffect } from "react";
 let flashcards = [{ id: 1, term: "Loading...", definition: "Loading..." }];
 
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
-type AnswerType = "multiple-choice" | "short-answer";
+type AnswerType = "multiple-choice" | "short-answer" | "both";
 
 export default function PracticePage() {
   if (typeof window !== "undefined") {
@@ -34,11 +34,16 @@ export default function PracticePage() {
   const [isClient, setIsClient] = useState(false);
   const [answerSubmitted, setAnswerSubmitted] = useState(false);
   const [isTermQuestion, setIsTermQuestion] = useState(true);
+  const [isShortAnswerQuestion, setIsShortAnswerQuestion] = useState(true);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   const newIsTermQuestion = () => {
     return quizMode === "term-to-definition" || (quizMode === "both" && Math.random() < 0.5);
+  };
+
+  const newIsShortAnswerQuestion = () => {
+    return answerType === "short-answer" || (answerType === "both" && Math.random() < 0.5);
   };
 
   useEffect(() => {
@@ -47,24 +52,24 @@ export default function PracticePage() {
   }, []);
 
   useEffect(() => {
-    if (answerType === "short-answer" && inputRef.current) {
+    if (isShortAnswerQuestion && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.value = "";
     }
-  }, [answerType, currentCardIndex]);
+  }, [isShortAnswerQuestion, currentCardIndex]);
 
   const shuffleCards = () => {
     setShuffledCards([...flashcards].sort(() => Math.random() - 0.5));
     setCurrentCardIndex(0);
     setShowAnswer(false);
     setIsTermQuestion(newIsTermQuestion());
+    setIsShortAnswerQuestion(newIsShortAnswerQuestion());
   };
   const currentCard = shuffledCards[currentCardIndex];
   useEffect(() => {
-    // Determine if it's a term question when moving to a new card
     setIsTermQuestion(newIsTermQuestion());
+    setIsShortAnswerQuestion(newIsShortAnswerQuestion());
 
-    // Reset other states as needed
     setUserAnswer("");
     setShowAnswer(false);
   }, [currentCardIndex, quizMode]);
@@ -103,7 +108,7 @@ export default function PracticePage() {
           nextQuestion();
           event.preventDefault();
         }
-      } else if (userAnswer === "" && answerType === "multiple-choice") {
+      } else if (userAnswer === "" && !isShortAnswerQuestion) {
         for (let i of ["1", "2", "3", "4"]) {
           if (event.key === i) {
             handleAnswer(options[parseInt(i) - 1]);
@@ -151,13 +156,17 @@ export default function PracticePage() {
               </select>
             </div>
             <div className="flex items-center space-x-2">
-              <Label htmlFor="answer-type">Answer Type:</Label>
-              <Switch
+              <Label htmlFor="quiz-mode">Answer Type: </Label>
+              <select
                 id="answer-type"
-                checked={answerType === "multiple-choice"}
-                onCheckedChange={(checked) => setAnswerType(checked ? "multiple-choice" : "short-answer")}
-              />
-              <span>{answerType === "multiple-choice" ? "Multiple Choice" : "Short Answer"}</span>
+                value={answerType}
+                onChange={(e) => setAnswerType(e.target.value as AnswerType)}
+                className="text-gray-700 border rounded p-2"
+              >
+                <option value="multiple-choice">Multiple Choice</option>
+                <option value="short-answer">Short Answer</option>
+                <option value="both">Both</option>
+              </select>
             </div>
             <Button onClick={shuffleCards} variant="outline">
               <Shuffle className="h-4 w-4 mr-2" />
@@ -168,7 +177,7 @@ export default function PracticePage() {
           <Card className="mb-6">
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold mb-4">{question}</h2>
-              {!showAnswer && answerType === "multiple-choice" && (
+              {!showAnswer && !isShortAnswerQuestion && (
                 <RadioGroup onValueChange={handleAnswer}>
                   <div className="space-y-3">
                     {options.map((option, index) => (
@@ -188,7 +197,7 @@ export default function PracticePage() {
                   </div>
                 </RadioGroup>
               )}
-              {!showAnswer && answerType === "short-answer" && (
+              {!showAnswer && isShortAnswerQuestion && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
