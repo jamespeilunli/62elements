@@ -46,8 +46,8 @@ const StudySet = () => {
     if (typeof window !== "undefined") {
       if (localStorage.getItem("flashcards")) {
         setFlashcards(JSON.parse(localStorage.getItem("flashcards")!));
+        return;
       }
-      return;
     }
     const setId = parseInt(searchParams.get("set-id") || "-1");
     const fetchData = async () => {
