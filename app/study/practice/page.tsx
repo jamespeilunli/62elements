@@ -135,6 +135,11 @@ export default function PracticePage() {
     setShowAnswer(false);
   };
 
+  const iWasRight = () => {
+    setScore(score + 1);
+    nextQuestion();
+  };
+
   return (
     <div>
       {isClient ? (
@@ -231,6 +236,11 @@ export default function PracticePage() {
                   <Button onClick={nextQuestion} className="mt-4">
                     Next Question
                   </Button>
+                  {userAnswer.toLowerCase() !== correctAnswer.toLowerCase() && (
+                    <Button onClick={iWasRight} className="ml-4">
+                      I Was Right
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
