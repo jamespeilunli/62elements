@@ -6,11 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
 import { Check, X, Shuffle, RotateCcw } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
-// Mock flashcards data
 let flashcards = [{ id: 1, term: "Loading...", definition: "Loading..." }];
 
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
@@ -38,18 +36,36 @@ export default function PracticePage() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const newIsTermQuestion = () => {
+  const newIsTermQuestion = useCallback(() => {
     return quizMode === "term-to-definition" || (quizMode === "both" && Math.random() < 0.5);
-  };
+  }, [quizMode]);
 
-  const newIsShortAnswerQuestion = () => {
+  const newIsShortAnswerQuestion = useCallback(() => {
     return answerType === "short-answer" || (answerType === "both" && Math.random() < 0.5);
-  };
+  }, [answerType]);
 
+  const shuffleCards = useCallback(() => {
+    setShuffledCards([...flashcards].sort(() => Math.random() - 0.5));
+    setCurrentCardIndex(0);
+    setShowAnswer(false);
+    setIsTermQuestion(newIsTermQuestion());
+    setIsShortAnswerQuestion(newIsShortAnswerQuestion());
+  }, [newIsTermQuestion, newIsShortAnswerQuestion]);
+
+  const nextQuestion = useCallback(() => {
+    setAnswerSubmitted(false);
+    if (currentCardIndex < shuffledCards.length - 1) {
+      setCurrentCardIndex(currentCardIndex + 1);
+    } else {
+      shuffleCards();
+    }
+    setUserAnswer("");
+    setShowAnswer(false);
+  }, [currentCardIndex, shuffledCards, shuffleCards]);
   useEffect(() => {
     setIsClient(true);
     shuffleCards();
-  }, []);
+  }, [shuffleCards]);
 
   useEffect(() => {
     if (isShortAnswerQuestion && inputRef.current) {
@@ -58,13 +74,6 @@ export default function PracticePage() {
     }
   }, [isShortAnswerQuestion, currentCardIndex]);
 
-  const shuffleCards = () => {
-    setShuffledCards([...flashcards].sort(() => Math.random() - 0.5));
-    setCurrentCardIndex(0);
-    setShowAnswer(false);
-    setIsTermQuestion(newIsTermQuestion());
-    setIsShortAnswerQuestion(newIsShortAnswerQuestion());
-  };
   const currentCard = shuffledCards[currentCardIndex];
   useEffect(() => {
     setIsTermQuestion(newIsTermQuestion());
@@ -72,7 +81,7 @@ export default function PracticePage() {
 
     setUserAnswer("");
     setShowAnswer(false);
-  }, [currentCardIndex, quizMode]);
+  }, [currentCardIndex, quizMode, newIsTermQuestion, newIsShortAnswerQuestion]);
 
   const question = isTermQuestion ? currentCard.definition : currentCard.term;
   const correctAnswer = isTermQuestion ? currentCard.term : currentCard.definition;
@@ -91,15 +100,18 @@ export default function PracticePage() {
 
   const options = generateOptions();
 
-  const handleAnswer = (answer: string) => {
-    setUserAnswer(answer);
-    setShowAnswer(true);
-    setTotalAttempts(totalAttempts + 1);
-    if (answer.toLowerCase() === correctAnswer.toLowerCase()) {
-      setScore(score + 1);
-    }
-    setAnswerSubmitted(true);
-  };
+  const handleAnswer = useCallback(
+    (answer: string) => {
+      setUserAnswer(answer);
+      setShowAnswer(true);
+      setTotalAttempts(totalAttempts + 1);
+      if (answer.toLowerCase() === correctAnswer.toLowerCase()) {
+        setScore(score + 1);
+      }
+      setAnswerSubmitted(true);
+    },
+    [correctAnswer, score, totalAttempts]
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -109,7 +121,7 @@ export default function PracticePage() {
           event.preventDefault();
         }
       } else if (userAnswer === "" && !isShortAnswerQuestion) {
-        for (let i of ["1", "2", "3", "4"]) {
+        for (const i of ["1", "2", "3", "4"]) {
           if (event.key === i) {
             handleAnswer(options[parseInt(i) - 1]);
           }
@@ -122,18 +134,7 @@ export default function PracticePage() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [answerSubmitted, userAnswer, answerType, options]);
-
-  const nextQuestion = () => {
-    setAnswerSubmitted(false);
-    if (currentCardIndex < shuffledCards.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
-    } else {
-      shuffleCards();
-    }
-    setUserAnswer("");
-    setShowAnswer(false);
-  };
+  }, [answerSubmitted, userAnswer, answerType, options, isShortAnswerQuestion, handleAnswer, nextQuestion]);
 
   const iWasRight = () => {
     setScore(score + 1);
@@ -260,7 +261,7 @@ export default function PracticePage() {
           </Button>
         </div>
       ) : (
-        0
+        "Loading..."
       )}
     </div>
   );

@@ -2,12 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { BookOpen, ChevronLeft, ChevronRight, Search, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-
-// Mock data for popular flashcard sets
 
 export default function PopularFlashcardSets() {
   const [sets, setSets] = useState([{ id: 0, title: "Loading...", cards: 0, rating: 5.0, category: "" }]);

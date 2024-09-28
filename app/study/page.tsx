@@ -31,15 +31,11 @@ export default function StudySet() {
   >([{ id: 1, set: -1, term: "Loading...", definition: "Loading...", difficulty: "New" }]);
   const [status, setStatus] = useState("Loading...");
 
-  let setTitle: string;
-
   useEffect(() => {
-    const setId = parseInt(searchParams.get("set-id") || "-1");
-
     const fetchData = async () => {
       const res0 = await fetch("/api/get-sets");
       const data0 = await res0.json();
-      for (let set of data0) {
+      for (const set of data0) {
         setStatus(`Studying ${set.title}`);
       }
     };
@@ -53,8 +49,8 @@ export default function StudySet() {
       const res = await fetch("/api/get-flashcards");
       const data = await res.json();
 
-      let new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
-      for (let flashcard of data) {
+      const new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
+      for (const flashcard of data) {
         if (flashcard.set === setId) {
           new_data.push({
             id: flashcard.id,
@@ -79,7 +75,7 @@ export default function StudySet() {
     } else {
       fetchData();
     }
-  }, []);
+  }, [searchParams]);
 
   const handlePrevCard = () => {
     if (currentCardIndex > 0) {
