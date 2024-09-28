@@ -1,7 +1,7 @@
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { BookOpen, Brain, Zap } from "lucide-react"
-import Link from "next/link"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { BookOpen, Brain, Zap } from "lucide-react";
+import Link from "next/link";
 
 export default function Component() {
   return (
@@ -15,7 +15,8 @@ export default function Component() {
                   Master Any Subject with 62elements
                 </h1>
                 <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
-                  Create, study, and share flashcards effortlessly. Boost your learning with our intuitive and powerful flashcard app.
+                  Create, study, and share flashcards effortlessly. Boost your learning with our intuitive and powerful
+                  flashcard app.
                 </p>
               </div>
               <div className="space-x-4">
@@ -60,9 +61,7 @@ export default function Component() {
           <div className="container px-4 md:px-6 mx-auto max-w-[1200px]">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">
-                  Start Learning Today
-                </h2>
+                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Start Learning Today</h2>
                 <p className="mx-auto max-w-[600px] text-gray-500 md:text-xl dark:text-gray-400">
                   Join thousands of students improving their knowledge with 62elements.
                 </p>
@@ -70,7 +69,9 @@ export default function Component() {
               <div className="w-full max-w-sm space-y-2">
                 <form className="flex space-x-2">
                   <Input className="max-w-lg flex-1" placeholder="Enter your email" type="email" />
-                  <Button variant="outline" type="submit">Sign Up</Button>
+                  <Button variant="outline" type="submit">
+                    Sign Up
+                  </Button>
                 </form>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   By signing up, you agree to our{" "}
@@ -84,5 +85,5 @@ export default function Component() {
         </section>
       </main>
     </div>
-  )
+  );
 }

@@ -1,78 +1,81 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ChevronLeft, ChevronRight, Eye, PenTool, Brain, Puzzle, Star, Edit } from "lucide-react"
-import { useSearchParams } from 'next/navigation';
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight, Eye, PenTool, Brain, Puzzle, Star, Edit } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 
 const studyModes = [
-  { name: 'Preview', icon: Eye },
-  { name: 'Test', icon: PenTool },
-  { name: 'Practice', icon: Brain },
-  { name: 'Match', icon: Puzzle },
-]
+  { name: "Preview", icon: Eye },
+  { name: "Test", icon: PenTool },
+  { name: "Practice", icon: Brain },
+  { name: "Match", icon: Puzzle },
+];
 
-const filterCategories = ['New', 'Challenging', 'Familiar', 'Proficient', 'Starred']
+const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starred"];
 
 export default function StudySet() {
-  const searchParams = useSearchParams()
+  const searchParams = useSearchParams();
 
-  const [currentCardIndex, setCurrentCardIndex] = useState(0)
-  const [isFlipped, setIsFlipped] = useState(false)
-  const [direction, setDirection] = useState(0)
-  const [activeFilter, setActiveFilter] = useState('All')
-  const [starredCards, setStarredCards] = useState<number[]>([])
-  const [flashcards, setFlashcards] = useState<{ id: number, set: number, term: string, definition: string, difficulty: string}[]>([
-    { id: 1, set:-1, term: 'Loading...', definition: 'Loading...', difficulty: 'New' },
-  ])
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [direction, setDirection] = useState(0);
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [starredCards, setStarredCards] = useState<number[]>([]);
+  const [flashcards, setFlashcards] = useState<
+    { id: number; set: number; term: string; definition: string; difficulty: string }[]
+  >([{ id: 1, set: -1, term: "Loading...", definition: "Loading...", difficulty: "New" }]);
   const [status, setStatus] = useState("Loading...");
 
   let setTitle: string;
 
   useEffect(() => {
-    const setId = parseInt(searchParams.get('set-id') || "-1"); 
+    const setId = parseInt(searchParams.get("set-id") || "-1");
 
     const fetchData = async () => {
-      const res0 = await fetch('/api/get-sets');
+      const res0 = await fetch("/api/get-sets");
       const data0 = await res0.json();
       for (let set of data0) {
-        setStatus(`Studying ${set.title}`)
-      };
-    }
+        setStatus(`Studying ${set.title}`);
+      }
+    };
 
     fetchData();
-  }, [])
+  }, []);
 
   useEffect(() => {
-    const setId = parseInt(searchParams.get('set-id') || "-1"); 
+    const setId = parseInt(searchParams.get("set-id") || "-1");
     const fetchData = async () => {
-      const res = await fetch('/api/get-flashcards');
+      const res = await fetch("/api/get-flashcards");
       const data = await res.json();
 
-      let new_data: {id: number, set: number, term: string, definition: string, difficulty: string}[] = [];
+      let new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
       for (let flashcard of data) {
         if (flashcard.set === setId) {
           new_data.push({
-            id: flashcard.id, set: flashcard.set, term: flashcard.term, definition: flashcard.definition, difficulty: "New"
-          })
+            id: flashcard.id,
+            set: flashcard.set,
+            term: flashcard.term,
+            definition: flashcard.definition,
+            difficulty: "New",
+          });
         }
       }
       if (new_data.length === 0) {
-        setStatus("Invalid flashcard set!")
-        return
+        setStatus("Invalid flashcard set!");
+        return;
       }
 
       localStorage.setItem("flashcards", JSON.stringify(new_data));
       setFlashcards(new_data);
     };
 
-
     if (localStorage.getItem("flashcards")) {
-      setFlashcards(JSON.parse(localStorage.getItem("flashcards")!))
+      setFlashcards(JSON.parse(localStorage.getItem("flashcards")!));
     } else {
       fetchData();
     }
@@ -80,48 +83,45 @@ export default function StudySet() {
 
   const handlePrevCard = () => {
     if (currentCardIndex > 0) {
-      setDirection(-1)
-      setCurrentCardIndex((prevIndex) => prevIndex - 1)
-      setIsFlipped(false)
+      setDirection(-1);
+      setCurrentCardIndex((prevIndex) => prevIndex - 1);
+      setIsFlipped(false);
     }
-  }
+  };
 
   const handleNextCard = () => {
     if (currentCardIndex < flashcards.length - 1) {
-      setDirection(1)
-      setCurrentCardIndex((prevIndex) => prevIndex + 1)
-      setIsFlipped(false)
+      setDirection(1);
+      setCurrentCardIndex((prevIndex) => prevIndex + 1);
+      setIsFlipped(false);
     }
-  }
+  };
 
   const toggleCardFlip = () => {
-    setIsFlipped(!isFlipped)
-  }
+    setIsFlipped(!isFlipped);
+  };
 
   const toggleStar = (id: number) => {
-    setStarredCards((prev) =>
-      prev.includes(id) ? prev.filter((cardId) => cardId !== id) : [...prev, id]
-    )
-  }
+    setStarredCards((prev) => (prev.includes(id) ? prev.filter((cardId) => cardId !== id) : [...prev, id]));
+  };
 
-  const filteredCards = activeFilter === 'All'
-    ? flashcards
-    : flashcards.filter(card => 
-        activeFilter === 'Starred' 
-          ? starredCards.includes(card.id) 
-          : card.difficulty === activeFilter
-      )
+  const filteredCards =
+    activeFilter === "All"
+      ? flashcards
+      : flashcards.filter((card) =>
+          activeFilter === "Starred" ? starredCards.includes(card.id) : card.difficulty === activeFilter
+        );
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">{status}</h1>
-      
+
       <div className="flex flex-col items-center mb-8">
         <div className="flex justify-center items-center w-full max-w-2xl mb-4">
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={handlePrevCard} 
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handlePrevCard}
             disabled={currentCardIndex === 0}
             aria-label="Previous card"
           >
@@ -136,10 +136,7 @@ export default function StudySet() {
               transition={{ duration: 0.3 }}
               className="mx-4 w-full"
             >
-              <Card 
-                className="w-full h-64 cursor-pointer perspective-1000"
-                onClick={toggleCardFlip}
-              >
+              <Card className="w-full h-64 cursor-pointer perspective-1000" onClick={toggleCardFlip}>
                 <motion.div
                   animate={{ rotateY: isFlipped ? 180 : 0 }}
                   transition={{ duration: 0.5 }}
@@ -155,10 +152,10 @@ export default function StudySet() {
               </Card>
             </motion.div>
           </AnimatePresence>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={handleNextCard} 
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleNextCard}
             disabled={currentCardIndex === flashcards.length - 1}
             aria-label="Next card"
           >
@@ -169,7 +166,7 @@ export default function StudySet() {
           Card {currentCardIndex + 1} of {flashcards.length}
         </div>
       </div>
-      
+
       <div className="flex justify-center space-x-4 mb-8">
         {studyModes.map((mode) => (
           <Button key={mode.name} variant="outline" asChild>
@@ -180,21 +177,18 @@ export default function StudySet() {
           </Button>
         ))}
       </div>
-      
+
       <div className="flex flex-wrap justify-center gap-2 mb-8">
-        <Button
-          variant={activeFilter === 'All' ? 'default' : 'outline'}
-          onClick={() => setActiveFilter('All')}
-        >
+        <Button variant={activeFilter === "All" ? "default" : "outline"} onClick={() => setActiveFilter("All")}>
           All
         </Button>
         {filterCategories.map((category) => (
           <Button
             key={category}
-            variant={activeFilter === category ? 'default' : 'outline'}
+            variant={activeFilter === category ? "default" : "outline"}
             onClick={() => setActiveFilter(category)}
           >
-            {category === 'Starred' && <Star className="h-4 w-4 mr-2" />}
+            {category === "Starred" && <Star className="h-4 w-4 mr-2" />}
             {category}
           </Button>
         ))}
@@ -230,7 +224,9 @@ export default function StudySet() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => {/* Implement edit functionality */}}
+                      onClick={() => {
+                        /* Implement edit functionality */
+                      }}
                       aria-label="Edit"
                     >
                       <Edit className="h-4 w-4" />
@@ -243,5 +239,5 @@ export default function StudySet() {
         </Table>
       </div>
     </div>
-  )
+  );
 }
