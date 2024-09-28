@@ -23,7 +23,7 @@ export default function PopularFlashcardSets() {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col bg-background">
       <main className="flex-1 py-12 container mx-auto px-4">
         <h1 className="text-3xl font-bold mb-6">Public Flashcard Library</h1>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

@@ -15,8 +15,7 @@ export default function Component() {
                   Master Any Subject with 62elements
                 </h1>
                 <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
-                  Create, study, and share flashcards effortlessly. Boost your learning with our intuitive and powerful
-                  flashcard app.
+                  Boost your learning with our intuitive and powerful flashcard app.
                 </p>
               </div>
               <div className="space-x-4">
@@ -37,22 +36,20 @@ export default function Component() {
                 <Zap className="h-8 w-8 mb-2" />
                 <h2 className="text-xl font-bold">Quick Creation</h2>
                 <p className="text-center text-gray-500 dark:text-gray-400">
-                  Create flashcards in seconds with our intuitive interface.
+                  [COMING SOON] Create flashcards in seconds with our intuitive interface.
                 </p>
               </div>
               <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
                 <Brain className="h-8 w-8 mb-2" />
                 <h2 className="text-xl font-bold">Smart Study</h2>
                 <p className="text-center text-gray-500 dark:text-gray-400">
-                  Our algorithm adapts to your learning pace for efficient studying.
+                  [COMING SOON] Our algorithm adapts to your learning pace for efficient studying.
                 </p>
               </div>
               <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
                 <BookOpen className="h-8 w-8 mb-2" />
-                <h2 className="text-xl font-bold">Vast Library</h2>
-                <p className="text-center text-gray-500 dark:text-gray-400">
-                  Access a wide range of pre-made decks or share your own.
-                </p>
+                <h2 className="text-xl font-bold">Library</h2>
+                <p className="text-center text-gray-500 dark:text-gray-400">Access pre-made decks or share your own.</p>
               </div>
             </div>
           </div>
@@ -63,7 +60,7 @@ export default function Component() {
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Start Learning Today</h2>
                 <p className="mx-auto max-w-[600px] text-gray-500 md:text-xl dark:text-gray-400">
-                  Join thousands of students improving their knowledge with 62elements.
+                  Sign in [COMING SOON]
                 </p>
               </div>
               <div className="w-full max-w-sm space-y-2">
@@ -73,12 +70,14 @@ export default function Component() {
                     Sign Up
                   </Button>
                 </form>
+                {/*
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   By signing up, you agree to our{" "}
                   <Link className="underline underline-offset-2" href="#">
                     Terms & Conditions
                   </Link>
                 </p>
+                */}
               </div>
             </div>
           </div>
