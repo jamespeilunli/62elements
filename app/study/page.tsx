@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Eye, PenTool, Brain, Puzzle, Star, Edit } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 
 const studyModes = [
   { name: "Preview", icon: Eye },
@@ -18,9 +18,8 @@ const studyModes = [
 
 const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starred"];
 
-export default function StudySet() {
+const StudySet = () => {
   const searchParams = useSearchParams();
-
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [direction, setDirection] = useState(0);
@@ -44,6 +43,12 @@ export default function StudySet() {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (localStorage.getItem("flashcards")) {
+        setFlashcards(JSON.parse(localStorage.getItem("flashcards")!));
+      }
+      return;
+    }
     const setId = parseInt(searchParams.get("set-id") || "-1");
     const fetchData = async () => {
       const res = await fetch("/api/get-flashcards");
@@ -111,7 +116,6 @@ export default function StudySet() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">{status}</h1>
-
       <div className="flex flex-col items-center mb-8">
         <div className="flex justify-center items-center w-full max-w-2xl mb-4">
           <Button
@@ -236,4 +240,14 @@ export default function StudySet() {
       </div>
     </div>
   );
-}
+};
+
+const Page = () => {
+  return (
+    <Suspense>
+      <StudySet />
+    </Suspense>
+  );
+};
+
+export default Page;

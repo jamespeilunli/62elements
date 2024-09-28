@@ -33,22 +33,22 @@ export default function Component() {
           <div className="container px-4 md:px-6 mx-auto max-w-[1200px]">
             <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
               <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
-                <Zap className="h-8 w-8 mb-2" />
-                <h2 className="text-xl font-bold">Quick Creation</h2>
+                <Zap className="h-8 w-8 mb-2 text-gray-900" />
+                <h2 className="text-xl font-bold text-gray-900">Quick Creation</h2>
                 <p className="text-center text-gray-500 dark:text-gray-400">
                   [COMING SOON] Create flashcards in seconds with our intuitive interface.
                 </p>
               </div>
               <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
-                <Brain className="h-8 w-8 mb-2" />
-                <h2 className="text-xl font-bold">Smart Study</h2>
+                <Brain className="h-8 w-8 mb-2 text-gray-900" />
+                <h2 className="text-xl font-bold text-gray-900">Smart Study</h2>
                 <p className="text-center text-gray-500 dark:text-gray-400">
                   [COMING SOON] Our algorithm adapts to your learning pace for efficient studying.
                 </p>
               </div>
               <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
-                <BookOpen className="h-8 w-8 mb-2" />
-                <h2 className="text-xl font-bold">Library</h2>
+                <BookOpen className="h-8 w-8 mb-2 text-gray-900" />
+                <h2 className="text-xl font-bold text-gray-900">Library</h2>
                 <p className="text-center text-gray-500 dark:text-gray-400">Access pre-made decks or share your own.</p>
               </div>
             </div>
