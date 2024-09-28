@@ -34,15 +34,17 @@ export default function StudySet() {
   let setTitle: string;
 
   useEffect(() => {
-      const fetchData = async () => {
-        const res = await fetch('/api/get-sets');
-        const data = await res.json();
-        for (let set of data) {
-          setStatus(`Studying ${set.title}`)
-        };
-      }
+    const setId = parseInt(searchParams.get('set-id') || "-1"); 
 
-      fetchData();
+    const fetchData = async () => {
+      const res0 = await fetch('/api/get-sets');
+      const data0 = await res0.json();
+      for (let set of data0) {
+        setStatus(`Studying ${set.title}`)
+      };
+    }
+
+    fetchData();
   }, [])
 
   useEffect(() => {
@@ -64,10 +66,16 @@ export default function StudySet() {
         return
       }
 
+      localStorage.setItem("flashcards", JSON.stringify(new_data));
       setFlashcards(new_data);
     };
 
-    fetchData();
+
+    if (localStorage.getItem("flashcards")) {
+      setFlashcards(JSON.parse(localStorage.getItem("flashcards")!))
+    } else {
+      fetchData();
+    }
   }, []);
 
   const handlePrevCard = () => {

@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress"
 import { Check, X, Shuffle, RotateCcw } from "lucide-react"
 
 // Mock flashcards data
-const flashcards = [
+let flashcards = [
   { id: 1, term: 'What is the capital of France?', definition: 'Paris' },
   { id: 2, term: 'Who painted the Mona Lisa?', definition: 'Leonardo da Vinci' },
   { id: 3, term: 'What is the chemical symbol for gold?', definition: 'Au' },
@@ -20,9 +20,18 @@ const flashcards = [
 ]
 
 type QuizMode = 'term-to-definition' | 'definition-to-term' | 'both'
-type AnswerType = 'multiple-choice' | 'short-answer'
+    type AnswerType = 'multiple-choice' | 'short-answer'
 
 export default function PracticePage() {
+  if (typeof(window) !== "undefined") {
+    if (localStorage.getItem("flashcards") && flashcards !== JSON.parse(localStorage.getItem("flashcards")!)) {
+      console.log(JSON.parse(localStorage.getItem("flashcards")!))
+      flashcards = JSON.parse(localStorage.getItem("flashcards")!)
+    } else {
+      return [{ id: 1, term: 'What is the capital of France?', definition: 'Paris' }]
+    }
+  }
+
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
   const [quizMode, setQuizMode] = useState<QuizMode>('both')
   const [answerType, setAnswerType] = useState<AnswerType>('multiple-choice')
