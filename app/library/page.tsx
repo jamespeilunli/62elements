@@ -1,23 +1,36 @@
+'use client'
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { BookOpen, ChevronLeft, ChevronRight, Search, Star } from "lucide-react"
 import Link from "next/link"
+import { useEffect, useState } from "react"
 
 // Mock data for popular flashcard sets
-const popularSets = [
-  { id: 1, title: "Element Symbols", cards: 62, rating: 5.0, category: "Chemistry" },
-  { id: 2, title: "Element Locations", cards: 62, rating: 5.0, category: "Chemistry" },
-]
 
 export default function PopularFlashcardSets() {
+  const [sets, setSets] = useState([
+    { id: 0, title: "Loading...", cards: 0, rating: 5.0, category: "" },
+  ])
+
+  useEffect(() => {
+      const fetchData = async () => {
+        const res = await fetch('/api/get-sets');
+        const data = await res.json();
+        setSets(data);
+      }
+
+      fetchData();
+  }, [])
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
 
       <main className="flex-1 py-12 container mx-auto px-4">
         <h1 className="text-3xl font-bold mb-6">Public Flashcard Library</h1>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {popularSets.map((set) => (
+          {sets.map((set) => (
             <Card key={set.id} className="flex flex-col justify-between">
               <CardHeader>
                 <CardTitle>{set.title}</CardTitle>
@@ -31,7 +44,7 @@ export default function PopularFlashcardSets() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Link href="/study">
+                <Link href={`/study?set-id=${set.id}`}>
                   <Button>Study Now</Button>
                 </Link>
               </CardFooter>
