@@ -79,7 +79,7 @@ export default function PracticePage() {
 
   const generateOptions = () => {
     const options = [correctAnswer];
-    while (options.length < 4) {
+    while (options.length < Math.min(4, flashcards.length)) {
       const randomCard = flashcards[Math.floor(Math.random() * flashcards.length)];
       const randomAnswer = isTermQuestion ? randomCard.term : randomCard.definition;
       if (!options.includes(randomAnswer)) {
