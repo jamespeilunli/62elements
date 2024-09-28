@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ChevronLeft, ChevronRight, Eye, PenTool, Brain, Puzzle, Star, Edit } from "lucide-react"
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -18,6 +19,8 @@ const studyModes = [
 const filterCategories = ['New', 'Challenging', 'Familiar', 'Proficient', 'Starred']
 
 export default function StudySet() {
+  const searchParams = useSearchParams()
+
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
   const [isFlipped, setIsFlipped] = useState(false)
   const [direction, setDirection] = useState(0)
@@ -26,17 +29,42 @@ export default function StudySet() {
   const [flashcards, setFlashcards] = useState<{ id: number, set: number, term: string, definition: string, difficulty: string}[]>([
     { id: 1, set:-1, term: 'Loading...', definition: 'Loading...', difficulty: 'New' },
   ])
+  const [status, setStatus] = useState("Loading...");
+
+  let setTitle: string;
 
   useEffect(() => {
+      const fetchData = async () => {
+        const res = await fetch('/api/get-sets');
+        const data = await res.json();
+        for (let set of data) {
+          setStatus(`Studying ${set.title}`)
+        };
+      }
+
+      fetchData();
+  }, [])
+
+  useEffect(() => {
+    const setId = parseInt(searchParams.get('set-id') || "-1"); 
     const fetchData = async () => {
-      const res = await fetch('/api/get-set');
+      const res = await fetch('/api/get-flashcards');
       const data = await res.json();
 
-      let new_data = data.map((flashcard: { id: number, set: number, term: string, definition: string}) => ({
-        id: flashcard.id, set: flashcard.set, term: flashcard.term, definition: flashcard.definition, difficulty: "New"
-      }));
+      let new_data: {id: number, set: number, term: string, definition: string, difficulty: string}[] = [];
+      for (let flashcard of data) {
+        if (flashcard.set === setId) {
+          new_data.push({
+            id: flashcard.id, set: flashcard.set, term: flashcard.term, definition: flashcard.definition, difficulty: "New"
+          })
+        }
+      }
+      if (new_data.length === 0) {
+        setStatus("Invalid flashcard set!")
+        return
+      }
 
-      setFlashcards((prevFlashcards) => new_data);
+      setFlashcards(new_data);
     };
 
     fetchData();
@@ -78,7 +106,7 @@ export default function StudySet() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Studying: [Set Name]</h1>
+      <h1 className="text-3xl font-bold mb-6">{status}</h1>
       
       <div className="flex flex-col items-center mb-8">
         <div className="flex justify-center items-center w-full max-w-2xl mb-4">
