@@ -4,16 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, PenTool, Brain, Puzzle, Star, Edit } from "lucide-react";
+import { ChevronLeft, ChevronRight, PenTool, Brain, /*Puzzle,*/ Star, Edit } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
-
-const studyModes = [
-  { name: "COMING SOON", icon: PenTool },
-  { name: "Practice", icon: Brain },
-  { name: "COMING SOON", icon: Puzzle },
-];
 
 const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starred"];
 
@@ -112,6 +106,13 @@ const StudySet = () => {
           activeFilter === "Starred" ? starredCards.includes(card.id) : card.difficulty === activeFilter
         );
 
+  const [isGlowing, setIsGlowing] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsGlowing(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">{status}</h1>
@@ -167,14 +168,26 @@ const StudySet = () => {
       </div>
 
       <div className="flex flex-wrap justify-center gap-2 mb-8">
-        {studyModes.map((mode) => (
-          <Button key={mode.name} variant="outline" asChild>
-            <Link href={`/study/${mode.name.toLowerCase()}`}>
-              <mode.icon className="h-4 w-4 mr-2" />
-              {mode.name}
-            </Link>
-          </Button>
-        ))}
+        <Button key="[COMING SOON]" variant="outline" asChild>
+          <Link href={`/study/coming-soon`}>
+            <PenTool className="h-4 w-4 mr-2" />
+            Coming Soon
+          </Link>
+        </Button>
+
+        <Button
+          key="Practice"
+          variant="outline"
+          asChild
+          className={`
+            ${isGlowing && "shadow-[0_0_25px_rgba(255,0,203,0.7)]"}
+          `}
+        >
+          <Link href={`/study/practice`}>
+            <Brain className="h-4 w-4 mr-2" />
+            Practice
+          </Link>
+        </Button>
       </div>
 
       <div className="mt-24">

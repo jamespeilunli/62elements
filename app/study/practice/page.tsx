@@ -237,7 +237,7 @@ export default function PracticePage() {
                   <Button onClick={nextQuestion} className="mt-4">
                     Next Question
                   </Button>
-                  {userAnswer.toLowerCase() !== correctAnswer.toLowerCase() && (
+                  {userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
                     <Button onClick={iWasRight} className="ml-4">
                       I Was Right
                     </Button>
