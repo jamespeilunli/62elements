@@ -1,13 +1,16 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FlaskConical } from "lucide-react";
 import { BookOpen, Brain, Zap } from "lucide-react";
 import Link from "next/link";
 
 export default function Component() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col">
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48">
+        <section className="w-full py-10 md:py-20 lg:py-30 xl:py-40">
           <div className="container px-4 md:px-6 mx-auto max-w-[1200px]">
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-2">
@@ -26,6 +29,38 @@ export default function Component() {
                   <Button variant="outline">Learn More</Button>
                 </Link>
               </div>
+            </div>
+          </div>
+        </section>
+        <section className="w-full py-12 md:py-24 lg:py-32">
+          <div className="flex-1">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="space-y-2">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Featured Flashcard Set</h2>
+                <p className="text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Prepare for your upcoming Chemistry quizzes and tests with our curated element symbols flashcard set.
+                </p>
+              </div>
+            </div>
+            <div className="mt-10 flex justify-center">
+              <Card className="fg-card text-card-foreground w-96 items-center">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl">Element Symbols</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center space-y-4">
+                  <FlaskConical className="h-12 w-12 text-primary" />
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Badge variant="secondary">62 Cards</Badge>
+                    <Badge variant="secondary">Chemistry</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground text-center">
+                    From Palladium (Pd) to Antimony (Sb), cover all the element symbols you need to know.
+                  </p>
+                  <Button asChild size="lg">
+                    <Link href="/study?set-id=0">Start Studying</Link>
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>

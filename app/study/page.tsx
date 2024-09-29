@@ -4,16 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Eye, PenTool, Brain, Puzzle, Star, Edit } from "lucide-react";
+import { ChevronLeft, ChevronRight, PenTool, Brain, Puzzle, Star, Edit } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 
 const studyModes = [
-  { name: "Preview", icon: Eye },
-  { name: "Test", icon: PenTool },
+  { name: "COMING SOON", icon: PenTool },
   { name: "Practice", icon: Brain },
-  { name: "Match", icon: Puzzle },
+  { name: "COMING SOON", icon: Puzzle },
 ];
 
 const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starred"];
@@ -178,24 +177,23 @@ const StudySet = () => {
         ))}
       </div>
 
-      <div className="flex flex-wrap justify-center gap-2 mb-8">
-        <Button variant={activeFilter === "All" ? "default" : "outline"} onClick={() => setActiveFilter("All")}>
-          All
-        </Button>
-        {filterCategories.map((category) => (
-          <Button
-            key={category}
-            variant={activeFilter === category ? "default" : "outline"}
-            onClick={() => setActiveFilter(category)}
-          >
-            {category === "Starred" && <Star className="h-4 w-4 mr-2" />}
-            {category}
+      <div className="mt-24">
+        <h2 className="text-3xl font-bold mb-4">Flashcards List</h2>
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          <Button variant={activeFilter === "All" ? "default" : "outline"} onClick={() => setActiveFilter("All")}>
+            All
           </Button>
-        ))}
-      </div>
-
-      <div className="mt-12">
-        <h2 className="text-2xl font-bold mb-4">Flashcards List</h2>
+          {filterCategories.map((category) => (
+            <Button
+              key={category}
+              variant={activeFilter === category ? "default" : "outline"}
+              onClick={() => setActiveFilter(category)}
+            >
+              {category === "Starred" && <Star className="h-4 w-4 mr-2" />}
+              {category}
+            </Button>
+          ))}
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
