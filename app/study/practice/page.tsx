@@ -105,7 +105,7 @@ export default function PracticePage() {
       setUserAnswer(answer);
       setShowAnswer(true);
       setTotalAttempts(totalAttempts + 1);
-      if (answer.toLowerCase() === correctAnswer.toLowerCase()) {
+      if (answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()) {
         setScore(score + 1);
       }
       setAnswerSubmitted(true);
@@ -224,7 +224,7 @@ export default function PracticePage() {
               {showAnswer && (
                 <div className="mt-4">
                   <p className="font-semibold">
-                    {userAnswer.toLowerCase() === correctAnswer.toLowerCase() ? (
+                    {userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim() ? (
                       <span className="text-green-600 flex items-center">
                         <Check className="h-5 w-5 mr-2" /> Correct!
                       </span>
