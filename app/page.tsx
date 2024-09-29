@@ -10,12 +10,12 @@ export default function Component() {
   return (
     <div className="flex flex-col">
       <main className="flex-1">
-        <section className="w-full py-10 md:py-20 lg:py-30 xl:py-40">
+        <section className="w-full py-16 md:py-20 lg:py-30 xl:py-40">
           <div className="container px-4 md:px-6 mx-auto max-w-[1200px]">
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
-                  Master Any Subject with 62elements
+                  62elements
                 </h1>
                 <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
                   Boost your learning with our intuitive and powerful flashcard app.
@@ -35,7 +35,7 @@ export default function Component() {
         <section className="w-full py-12 md:py-24 lg:py-32">
           <div className="flex-1">
             <div className="flex flex-col items-center space-y-4 text-center">
-              <div className="space-y-2">
+              <div className="space-y-2 mx-8">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Featured Flashcard Set</h2>
                 <p className="text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Prepare for your upcoming Chemistry quizzes and tests with our curated element symbols flashcard set.
@@ -43,7 +43,7 @@ export default function Component() {
               </div>
             </div>
             <div className="mt-10 flex justify-center">
-              <Card className="fg-card text-card-foreground w-96 items-center">
+              <Card className="fg-card text-card-foreground mx-8 max-w-96 items-center">
                 <CardHeader className="text-center">
                   <CardTitle className="text-2xl">Element Symbols</CardTitle>
                 </CardHeader>

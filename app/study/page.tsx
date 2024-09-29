@@ -166,7 +166,7 @@ const StudySet = () => {
         </div>
       </div>
 
-      <div className="flex justify-center space-x-4 mb-8">
+      <div className="flex flex-wrap justify-center gap-2 mb-8">
         {studyModes.map((mode) => (
           <Button key={mode.name} variant="outline" asChild>
             <Link href={`/study/${mode.name.toLowerCase()}`}>
