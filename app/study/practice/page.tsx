@@ -8,14 +8,14 @@ import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Check, X, Shuffle, RotateCcw } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 
 let flashcards = [{ id: 1, term: "Loading...", definition: "Loading..." }];
 
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
 
-export default function PracticePage() {
+function PracticePage() {
   const searchParams = useSearchParams();
 
   if (typeof window !== "undefined") {
@@ -300,3 +300,12 @@ export default function PracticePage() {
     </div>
   );
 }
+const Page = () => {
+  return (
+    <Suspense>
+      <PracticePage />
+    </Suspense>
+  );
+};
+
+export default Page;
