@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Check, X, Shuffle, RotateCcw } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 let flashcards = [{ id: 1, term: "Loading...", definition: "Loading..." }];
@@ -15,15 +16,48 @@ type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
 
 export default function PracticePage() {
+  const searchParams = useSearchParams();
+
   if (typeof window !== "undefined") {
     if (localStorage.getItem("flashcards")) {
       flashcards = JSON.parse(localStorage.getItem("flashcards")!);
     }
   }
 
+  const setIdStr = searchParams.get("set-id");
+  if (setIdStr) {
+    const setId = parseInt(setIdStr!);
+    const fetchData = async () => {
+      const res = await fetch("/api/get-flashcards");
+      const data = await res.json();
+
+      const new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
+      for (const flashcard of data) {
+        if (flashcard.set === setId) {
+          new_data.push({
+            id: flashcard.id,
+            set: flashcard.set,
+            term: flashcard.term,
+            definition: flashcard.definition,
+            difficulty: "New",
+          });
+        }
+      }
+      if (new_data.length === 0) {
+        alert("Invalid flashcard set!");
+        return;
+      }
+
+      localStorage.setItem("flashcards", JSON.stringify(new_data));
+      flashcards = new_data;
+    };
+
+    fetchData();
+  }
+
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [quizMode, setQuizMode] = useState<QuizMode>("both");
-  const [answerType, setAnswerType] = useState<AnswerType>("multiple-choice");
+  const [answerType, setAnswerType] = useState<AnswerType>("short-answer");
   const [userAnswer, setUserAnswer] = useState("");
   const [showAnswer, setShowAnswer] = useState(false);
   const [score, setScore] = useState(0);
