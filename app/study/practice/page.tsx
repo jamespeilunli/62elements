@@ -18,43 +18,48 @@ type AnswerType = "multiple-choice" | "short-answer" | "both";
 function PracticePage() {
   const searchParams = useSearchParams();
 
-  if (typeof window !== "undefined") {
-    if (localStorage.getItem("flashcards")) {
-      flashcards = JSON.parse(localStorage.getItem("flashcards")!);
-    }
-  }
+  useEffect(() => {
+    const setIdStr = searchParams.get("set-id");
+    if (setIdStr) {
+      const setId = parseInt(setIdStr!);
+      const fetchData = async () => {
+        const res = await fetch(process.env.NEXT_PUBLIC_URL + "/api/get-flashcards");
+        const data = await res.json();
 
-  const setIdStr = searchParams.get("set-id");
-  if (setIdStr) {
-    const setId = parseInt(setIdStr!);
-    const fetchData = async () => {
-      const res = await fetch("/api/get-flashcards");
-      const data = await res.json();
-
-      const new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
-      for (const flashcard of data) {
-        if (flashcard.set === setId) {
-          new_data.push({
-            id: flashcard.id,
-            set: flashcard.set,
-            term: flashcard.term,
-            definition: flashcard.definition,
-            difficulty: "New",
-          });
+        const new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
+        for (const flashcard of data) {
+          if (flashcard.set === setId) {
+            new_data.push({
+              id: flashcard.id,
+              set: flashcard.set,
+              term: flashcard.term,
+              definition: flashcard.definition,
+              difficulty: "New",
+            });
+          }
         }
+        if (new_data.length === 0) {
+          alert("Invalid flashcard set!");
+          return;
+        }
+
+        localStorage.setItem("flashcards", JSON.stringify(new_data));
+        flashcards = new_data;
+        setShuffledCards(flashcards);
+      };
+
+      fetchData();
+    } else {
+      if (localStorage.getItem("flashcards")) {
+        flashcards = JSON.parse(localStorage.getItem("flashcards")!);
+        setShuffledCards(flashcards);
       }
-      if (new_data.length === 0) {
-        alert("Invalid flashcard set!");
-        return;
-      }
+    }
 
-      localStorage.setItem("flashcards", JSON.stringify(new_data));
-      flashcards = new_data;
-    };
-
-    fetchData();
-  }
-
+    setIsClient(true);
+    console.log(shuffledCards);
+    shuffleCards();
+  }, []);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [quizMode, setQuizMode] = useState<QuizMode>("both");
   const [answerType, setAnswerType] = useState<AnswerType>("short-answer");
@@ -67,6 +72,7 @@ function PracticePage() {
   const [answerSubmitted, setAnswerSubmitted] = useState(false);
   const [isTermQuestion, setIsTermQuestion] = useState(true);
   const [isShortAnswerQuestion, setIsShortAnswerQuestion] = useState(true);
+  const [isCorrect, setIsCorrect] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -93,11 +99,31 @@ function PracticePage() {
     } else {
       shuffleCards();
     }
+    setIsCorrect(false);
     setUserAnswer("");
     setShowAnswer(false);
   }, [currentCardIndex, shuffledCards, shuffleCards]);
+
+  const validateAnswer = (guess: string, rightAnswer: string): boolean => {
+    guess = guess.toLowerCase().trim();
+    rightAnswer = rightAnswer.toLowerCase().trim();
+    if (guess == rightAnswer) {
+      return true;
+    }
+
+    // handle duplicate definitions or terms
+    if (isTermQuestion) {
+      return (
+        guess in flashcards.filter((flashcard) => flashcard.definition === guess).map((flashcard) => flashcard.term)
+      );
+    } else {
+      return (
+        guess in flashcards.filter((flashcard) => flashcard.term === guess).map((flashcard) => flashcard.definition)
+      );
+    }
+  };
+
   useEffect(() => {
-    setIsClient(true);
     shuffleCards();
   }, [shuffleCards]);
 
@@ -122,7 +148,7 @@ function PracticePage() {
 
   const generateOptions = () => {
     const options = [correctAnswer];
-    while (options.length < Math.min(4, flashcards.length)) {
+    while (new Set(options).size < Math.min(4, flashcards.length)) {
       const randomCard = flashcards[Math.floor(Math.random() * flashcards.length)];
       const randomAnswer = isTermQuestion ? randomCard.term : randomCard.definition;
       if (!options.includes(randomAnswer)) {
@@ -139,8 +165,11 @@ function PracticePage() {
       setUserAnswer(answer);
       setShowAnswer(true);
       setTotalAttempts(totalAttempts + 1);
-      if (answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()) {
+      if (validateAnswer(answer, correctAnswer)) {
         setScore(score + 1);
+        setIsCorrect(true);
+      } else {
+        setIsCorrect(false);
       }
       setAnswerSubmitted(true);
     },
@@ -258,7 +287,7 @@ function PracticePage() {
               {showAnswer && (
                 <div className="mt-4">
                   <p className="font-semibold">
-                    {userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim() ? (
+                    {isCorrect ? (
                       <span className="text-green-600 flex items-center">
                         <Check className="h-5 w-5 mr-2" /> Correct!
                       </span>
@@ -271,7 +300,7 @@ function PracticePage() {
                   <Button onClick={nextQuestion} className="mt-4">
                     Next Question
                   </Button>
-                  {userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
+                  {!isCorrect && (
                     <Button onClick={iWasRight} className="ml-4">
                       I Was Right
                     </Button>
