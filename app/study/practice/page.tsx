@@ -72,6 +72,7 @@ function PracticePage() {
   const [answerSubmitted, setAnswerSubmitted] = useState(false);
   const [isTermQuestion, setIsTermQuestion] = useState(true);
   const [isShortAnswerQuestion, setIsShortAnswerQuestion] = useState(true);
+  const [isCorrect, setIsCorrect] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -98,9 +99,30 @@ function PracticePage() {
     } else {
       shuffleCards();
     }
+    setIsCorrect(false);
     setUserAnswer("");
     setShowAnswer(false);
   }, [currentCardIndex, shuffledCards, shuffleCards]);
+
+  const validateAnswer = (guess: string, rightAnswer: string): boolean => {
+    guess = guess.toLowerCase().trim();
+    rightAnswer = rightAnswer.toLowerCase().trim();
+    if (guess == rightAnswer) {
+      return true;
+    }
+
+    // handle duplicate definitions or terms
+    if (isTermQuestion) {
+      return (
+        guess in flashcards.filter((flashcard) => flashcard.definition === guess).map((flashcard) => flashcard.term)
+      );
+    } else {
+      return (
+        guess in flashcards.filter((flashcard) => flashcard.term === guess).map((flashcard) => flashcard.definition)
+      );
+    }
+  };
+
   useEffect(() => {
     shuffleCards();
   }, [shuffleCards]);
@@ -126,7 +148,7 @@ function PracticePage() {
 
   const generateOptions = () => {
     const options = [correctAnswer];
-    while (options.length < Math.min(4, flashcards.length)) {
+    while (new Set(options).size < Math.min(4, flashcards.length)) {
       const randomCard = flashcards[Math.floor(Math.random() * flashcards.length)];
       const randomAnswer = isTermQuestion ? randomCard.term : randomCard.definition;
       if (!options.includes(randomAnswer)) {
@@ -143,8 +165,11 @@ function PracticePage() {
       setUserAnswer(answer);
       setShowAnswer(true);
       setTotalAttempts(totalAttempts + 1);
-      if (answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()) {
+      if (validateAnswer(answer, correctAnswer)) {
         setScore(score + 1);
+        setIsCorrect(true);
+      } else {
+        setIsCorrect(false);
       }
       setAnswerSubmitted(true);
     },
@@ -262,7 +287,7 @@ function PracticePage() {
               {showAnswer && (
                 <div className="mt-4">
                   <p className="font-semibold">
-                    {userAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim() ? (
+                    {isCorrect ? (
                       <span className="text-green-600 flex items-center">
                         <Check className="h-5 w-5 mr-2" /> Correct!
                       </span>
@@ -275,7 +300,7 @@ function PracticePage() {
                   <Button onClick={nextQuestion} className="mt-4">
                     Next Question
                   </Button>
-                  {userAnswer.toLowerCase().trim() !== correctAnswer.toLowerCase().trim() && (
+                  {!isCorrect && (
                     <Button onClick={iWasRight} className="ml-4">
                       I Was Right
                     </Button>
