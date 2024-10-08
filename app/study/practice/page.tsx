@@ -18,43 +18,48 @@ type AnswerType = "multiple-choice" | "short-answer" | "both";
 function PracticePage() {
   const searchParams = useSearchParams();
 
-  if (typeof window !== "undefined") {
-    if (localStorage.getItem("flashcards")) {
-      flashcards = JSON.parse(localStorage.getItem("flashcards")!);
-    }
-  }
+  useEffect(() => {
+    const setIdStr = searchParams.get("set-id");
+    if (setIdStr) {
+      const setId = parseInt(setIdStr!);
+      const fetchData = async () => {
+        const res = await fetch(process.env.NEXT_PUBLIC_URL + "/api/get-flashcards");
+        const data = await res.json();
 
-  const setIdStr = searchParams.get("set-id");
-  if (setIdStr) {
-    const setId = parseInt(setIdStr!);
-    const fetchData = async () => {
-      const res = await fetch("/api/get-flashcards");
-      const data = await res.json();
-
-      const new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
-      for (const flashcard of data) {
-        if (flashcard.set === setId) {
-          new_data.push({
-            id: flashcard.id,
-            set: flashcard.set,
-            term: flashcard.term,
-            definition: flashcard.definition,
-            difficulty: "New",
-          });
+        const new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
+        for (const flashcard of data) {
+          if (flashcard.set === setId) {
+            new_data.push({
+              id: flashcard.id,
+              set: flashcard.set,
+              term: flashcard.term,
+              definition: flashcard.definition,
+              difficulty: "New",
+            });
+          }
         }
+        if (new_data.length === 0) {
+          alert("Invalid flashcard set!");
+          return;
+        }
+
+        localStorage.setItem("flashcards", JSON.stringify(new_data));
+        flashcards = new_data;
+        setShuffledCards(flashcards);
+      };
+
+      fetchData();
+    } else {
+      if (localStorage.getItem("flashcards")) {
+        flashcards = JSON.parse(localStorage.getItem("flashcards")!);
+        setShuffledCards(flashcards);
       }
-      if (new_data.length === 0) {
-        alert("Invalid flashcard set!");
-        return;
-      }
+    }
 
-      localStorage.setItem("flashcards", JSON.stringify(new_data));
-      flashcards = new_data;
-    };
-
-    fetchData();
-  }
-
+    setIsClient(true);
+    console.log(shuffledCards);
+    shuffleCards();
+  }, []);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [quizMode, setQuizMode] = useState<QuizMode>("both");
   const [answerType, setAnswerType] = useState<AnswerType>("short-answer");
@@ -97,7 +102,6 @@ function PracticePage() {
     setShowAnswer(false);
   }, [currentCardIndex, shuffledCards, shuffleCards]);
   useEffect(() => {
-    setIsClient(true);
     shuffleCards();
   }, [shuffleCards]);
 

@@ -24,54 +24,60 @@ const StudySet = () => {
   const [status, setStatus] = useState("Loading...");
 
   useEffect(() => {
-    const fetchData = async () => {
-      const res0 = await fetch("/api/get-sets");
-      const data0 = await res0.json();
-      for (const set of data0) {
-        setStatus(`Studying ${set.title}`);
-      }
-    };
+    const setIdStr = searchParams.get("set-id");
+    if (setIdStr) {
+      const setId = parseInt(setIdStr!);
+      const fetchData = async () => {
+        const res0 = await fetch("/api/get-sets");
+        const data0 = await res0.json();
+        for (const set of data0) {
+          if (set.id == setId) {
+            setStatus(`Studying ${set.title}`);
+          }
+        }
+      };
 
-    fetchData();
+      fetchData();
+    }
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (localStorage.getItem("flashcards")) {
-        setFlashcards(JSON.parse(localStorage.getItem("flashcards")!));
-        return;
-      }
-    }
-    const setId = parseInt(searchParams.get("set-id") || "-1");
-    const fetchData = async () => {
-      const res = await fetch("/api/get-flashcards");
-      const data = await res.json();
+    const setIdStr = searchParams.get("set-id");
+    if (setIdStr) {
+      const setId = parseInt(setIdStr!);
+      const fetchData = async () => {
+        const res = await fetch("/api/get-flashcards");
+        const data = await res.json();
 
-      const new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
-      for (const flashcard of data) {
-        if (flashcard.set === setId) {
-          new_data.push({
-            id: flashcard.id,
-            set: flashcard.set,
-            term: flashcard.term,
-            definition: flashcard.definition,
-            difficulty: "New",
-          });
+        const new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
+        for (const flashcard of data) {
+          if (flashcard.set === setId) {
+            new_data.push({
+              id: flashcard.id,
+              set: flashcard.set,
+              term: flashcard.term,
+              definition: flashcard.definition,
+              difficulty: "New",
+            });
+          }
+        }
+        if (new_data.length === 0) {
+          setStatus("Invalid flashcard set!");
+          return;
+        }
+
+        localStorage.setItem("flashcards", JSON.stringify(new_data));
+        setFlashcards(new_data);
+      };
+
+      fetchData();
+    } else {
+      if (typeof window !== "undefined") {
+        if (localStorage.getItem("flashcards")) {
+          setFlashcards(JSON.parse(localStorage.getItem("flashcards")!));
+          return;
         }
       }
-      if (new_data.length === 0) {
-        setStatus("Invalid flashcard set!");
-        return;
-      }
-
-      localStorage.setItem("flashcards", JSON.stringify(new_data));
-      setFlashcards(new_data);
-    };
-
-    if (localStorage.getItem("flashcards")) {
-      setFlashcards(JSON.parse(localStorage.getItem("flashcards")!));
-    } else {
-      fetchData();
     }
   }, [searchParams]);
 
