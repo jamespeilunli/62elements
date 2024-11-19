@@ -105,8 +105,9 @@ function PracticePage() {
   }, [currentCardIndex, shuffledCards, shuffleCards]);
 
   const validateAnswer = (guess: string, rightAnswer: string): boolean => {
-    guess = guess.toLowerCase().trim();
-    rightAnswer = rightAnswer.toLowerCase().trim();
+    // normalize NFKD is used here to turn subscript and superscript characters to their normal counterparts
+    guess = guess.normalize("NFKD").replace(/−/g, "-").toLowerCase().trim();
+    rightAnswer = rightAnswer.normalize("NFKD").replace(/−/g, "-").toLowerCase().trim();
     if (guess == rightAnswer) {
       return true;
     }
