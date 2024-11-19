@@ -294,7 +294,7 @@ function PracticePage() {
                       </span>
                     ) : (
                       <span className="text-red-600 flex items-center">
-                        <X className="h-5 w-5 mr-2" /> Incorrect. The correct answer is: {correctAnswer}
+                        <X className="h-5 w-5 mr-2" /> {userAnswer} is incorrect. The correct answer is: {correctAnswer}
                       </span>
                     )}
                   </p>
