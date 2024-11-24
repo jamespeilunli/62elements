@@ -13,6 +13,7 @@ const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starr
 
 const StudySet = () => {
   const searchParams = useSearchParams();
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [direction, setDirection] = useState(0);
@@ -22,6 +23,12 @@ const StudySet = () => {
     { id: number; set: number; term: string; definition: string; difficulty: string }[]
   >([{ id: 1, set: -1, term: "Loading...", definition: "Loading...", difficulty: "New" }]);
   const [status, setStatus] = useState("Loading...");
+
+  useEffect(() => {
+    const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    console.log(darkMode)
+    setIsDarkMode(darkMode);
+  }, []); 
 
   useEffect(() => {
     const setIdStr = searchParams.get("set-id");
@@ -168,7 +175,7 @@ const StudySet = () => {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm dark:text-muted-foreground">
           Card {currentCardIndex + 1} of {flashcards.length}
         </div>
       </div>
@@ -213,7 +220,7 @@ const StudySet = () => {
             </Button>
           ))}
         </div>
-        <Table>
+        <Table className={isDarkMode ? 'dark' : ''}>
           <TableHeader>
             <TableRow>
               <TableHead>Term</TableHead>
