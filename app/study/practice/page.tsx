@@ -218,7 +218,7 @@ function PracticePage() {
                 id="quiz-mode"
                 value={quizMode}
                 onChange={(e) => setQuizMode(e.target.value as QuizMode)}
-                className="text-gray-700 border rounded p-2"
+                className="border rounded p-2"
               >
                 <option value="term-to-definition">Term to Definition</option>
                 <option value="definition-to-term">Definition to Term</option>
@@ -231,7 +231,7 @@ function PracticePage() {
                 id="answer-type"
                 value={answerType}
                 onChange={(e) => setAnswerType(e.target.value as AnswerType)}
-                className="text-gray-700 border rounded p-2"
+                className="border rounded p-2"
               >
                 <option value="multiple-choice">Multiple Choice</option>
                 <option value="short-answer">Short Answer</option>

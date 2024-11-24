@@ -7,6 +7,7 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   darkMode: ["class"],
+  safelist: ["dark"],
   theme: {
     extend: {
       colors: {
