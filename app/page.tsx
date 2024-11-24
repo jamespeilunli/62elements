@@ -17,7 +17,7 @@ export default function Component() {
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
                   62elements
                 </h1>
-                <p className="mx-auto max-w-[700px] text-gray-500 md:text-xl dark:text-gray-400">
+                <p className="mx-auto max-w-[700px] md:text-xl ">
                   Boost your learning with our intuitive and powerful flashcard app.
                 </p>
               </div>
@@ -64,27 +64,27 @@ export default function Component() {
             </div>
           </div>
         </section>
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-100 dark:bg-gray-800">
+        <section className="invert w-full py-12 md:py-24 lg:py-32 bg-white dark:bg-black">
           <div className="container px-4 md:px-6 mx-auto max-w-[1200px]">
             <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
-                <Zap className="h-8 w-8 mb-2 text-gray-900" />
-                <h2 className="text-xl font-bold text-gray-900">Quick Creation</h2>
-                <p className="text-center text-gray-500 dark:text-gray-400">
+              <div className="flex flex-col items-center space-y-2 p-4 rounded-lg">
+                <Zap className="h-8 w-8 mb-2 " />
+                <h2 className="text-xl font-bold ">Quick Creation</h2>
+                <p className="text-center  ">
                   [COMING SOON] Create flashcards in seconds with our intuitive interface.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
-                <Brain className="h-8 w-8 mb-2 text-gray-900" />
-                <h2 className="text-xl font-bold text-gray-900">Smart Study</h2>
-                <p className="text-center text-gray-500 dark:text-gray-400">
+              <div className="flex flex-col items-center space-y-2 p-4 rounded-lg">
+                <Brain className="h-8 w-8 mb-2 " />
+                <h2 className="text-xl font-bold ">Smart Study</h2>
+                <p className="text-center ">
                   [COMING SOON] Our algorithm adapts to your learning pace for efficient studying.
                 </p>
               </div>
-              <div className="flex flex-col items-center space-y-2 border-gray-800 p-4 rounded-lg">
-                <BookOpen className="h-8 w-8 mb-2 text-gray-900" />
-                <h2 className="text-xl font-bold text-gray-900">Library</h2>
-                <p className="text-center text-gray-500 dark:text-gray-400">Access pre-made decks or share your own.</p>
+              <div className="flex flex-col items-center space-y-2 p-4 rounded-lg">
+                <BookOpen className="h-8 w-8 mb-2 " />
+                <h2 className="text-xl font-bold ">Library</h2>
+                <p className="text-center ">Access pre-made decks or share your own.</p>
               </div>
             </div>
           </div>
@@ -94,7 +94,7 @@ export default function Component() {
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Start Learning Today</h2>
-                <p className="mx-auto max-w-[600px] text-gray-500 md:text-xl dark:text-gray-400">
+                <p className="mx-auto max-w-[600px]  md:text-xl ">
                   Sign in [COMING SOON]
                 </p>
               </div>
