@@ -10,7 +10,9 @@ Intuitive and lightweight flashcard app using Next.js and Supabase.
 - [x] card shuffling
 - [x] per-session study progress tracking
 - [ ] track, store, and filter flashcard difficulty and star status
-- [ ] testing and leaderboards for testing
+- [ ] adaptive study algorithm
+- [ ] test mode
+- [ ] leaderboards
 - [ ] add, remove, and edit existing flashcards
 - [ ] user accounts and save progress by account
 - [ ] create new flashcard sets
