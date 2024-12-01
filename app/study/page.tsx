@@ -1,85 +1,23 @@
 "use client";
 
+import { useFlashcardData } from "../../hooks/useFlashcardData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, PenTool, Brain, /*Puzzle,*/ Star, Edit } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 
 const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starred"];
 
 const StudySet = () => {
-  const searchParams = useSearchParams();
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [direction, setDirection] = useState(0);
   const [activeFilter, setActiveFilter] = useState("All");
   const [starredCards, setStarredCards] = useState<number[]>([]);
-  const [flashcards, setFlashcards] = useState<
-    { id: number; set: number; term: string; definition: string; difficulty: string }[]
-  >([{ id: 1, set: -1, term: "Loading...", definition: "Loading...", difficulty: "New" }]);
-  const [status, setStatus] = useState("Loading...");
-
-  useEffect(() => {
-    const setIdStr = searchParams.get("set-id");
-    if (setIdStr) {
-      const setId = parseInt(setIdStr!);
-      const fetchData = async () => {
-        const res0 = await fetch("/api/get-sets");
-        const data0 = await res0.json();
-        for (const set of data0) {
-          if (set.id == setId) {
-            setStatus(`Studying ${set.title}`);
-          }
-        }
-      };
-
-      fetchData();
-    }
-  }, []);
-
-  useEffect(() => {
-    const setIdStr = searchParams.get("set-id");
-    if (setIdStr) {
-      const setId = parseInt(setIdStr!);
-      const fetchData = async () => {
-        const res = await fetch("/api/get-flashcards");
-        const data = await res.json();
-
-        const new_data: { id: number; set: number; term: string; definition: string; difficulty: string }[] = [];
-        for (const flashcard of data) {
-          if (flashcard.set === setId) {
-            new_data.push({
-              id: flashcard.id,
-              set: flashcard.set,
-              term: flashcard.term,
-              definition: flashcard.definition,
-              difficulty: "New",
-            });
-          }
-        }
-        if (new_data.length === 0) {
-          setStatus("Invalid flashcard set!");
-          return;
-        }
-
-        localStorage.setItem("flashcards", JSON.stringify(new_data));
-        setFlashcards(new_data);
-      };
-
-      fetchData();
-    } else {
-      if (typeof window !== "undefined") {
-        if (localStorage.getItem("flashcards")) {
-          setFlashcards(JSON.parse(localStorage.getItem("flashcards")!));
-          return;
-        }
-      }
-    }
-  }, [searchParams]);
+  const { flashcards, status } = useFlashcardData();
 
   const handlePrevCard = () => {
     if (currentCardIndex > 0) {
