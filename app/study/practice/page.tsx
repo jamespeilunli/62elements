@@ -78,10 +78,6 @@ function PracticePage() {
   };
 
   useEffect(() => {
-    shuffleCards();
-  }, [shuffleCards]);
-
-  useEffect(() => {
     if (isShortAnswerQuestion && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.value = "";
