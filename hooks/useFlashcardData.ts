@@ -4,7 +4,7 @@ import { fetchFilteredTable } from "../lib/utils";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
-type Flashcard = {
+export type Flashcard = {
   id: number;
   set: number;
   term: string;
