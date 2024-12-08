@@ -61,5 +61,5 @@ export const useFlashcardData = () => {
     fetchData();
   }, [searchParams]);
 
-  return { flashcards, status, setFlashcards };
+  return { flashcards, setFlashcards, status };
 };
