@@ -49,56 +49,52 @@ const FlashcardTable = (props: FlashcardTableProps) => {
           ))}
         </div>
       </div>
-
-
-
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Term</TableHead>
-          <TableHead>Definition</TableHead>
-          <TableHead>Difficulty</TableHead>
-          <TableHead className="w-[100px]">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {filteredCards.map((card) => (
-          <TableRow key={card.id}>
-            <TableCell>{card.term}</TableCell>
-            <TableCell>{card.definition}</TableCell>
-            <TableCell>{card.difficulty}</TableCell>
-            <TableCell>
-              <div className="flex space-x-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => toggleStar(card.id)}
-                  aria-label={starredCards.includes(card.id) ? "Unstar" : "Star"}
-                >
-                  <Star className={`h-4 w-4 ${starredCards.includes(card.id) ? "fill-yellow-400" : ""}`} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    /* Implement edit functionality */
-                  }}
-                  aria-label="Edit"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </div>
-            </TableCell>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Term</TableHead>
+            <TableHead>Definition</TableHead>
+            <TableHead>Difficulty</TableHead>
+            <TableHead className="w-[100px]">Actions</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {filteredCards.map((card) => (
+            <TableRow key={card.id}>
+              <TableCell>{card.term}</TableCell>
+              <TableCell>{card.definition}</TableCell>
+              <TableCell>{card.difficulty}</TableCell>
+              <TableCell>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => toggleStar(card.id)}
+                    aria-label={starredCards.includes(card.id) ? "Unstar" : "Star"}
+                  >
+                    <Star className={`h-4 w-4 ${starredCards.includes(card.id) ? "fill-yellow-400" : ""}`} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      /* Implement edit functionality */
+                    }}
+                    aria-label="Edit"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };
 
 const StudySet = () => {
-  console.log("E")
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [direction, setDirection] = useState(0);
@@ -208,7 +204,7 @@ const StudySet = () => {
         </Button>
       </div>
 
-        <FlashcardTable flashcards={flashcards} />
+      <FlashcardTable flashcards={flashcards} />
     </div>
   );
 };
