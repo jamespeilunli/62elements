@@ -175,7 +175,7 @@ const FlashcardsDisplay = (props: FlashcardProps) => {
   );
 };
 
-const StudySet = () => {
+const Page = () => {
   const { flashcards, status } = useFlashcardData();
 
   const [isGlowing, setIsGlowing] = useState(true);
@@ -215,14 +215,6 @@ const StudySet = () => {
 
       <FlashcardTable flashcards={flashcards} />
     </div>
-  );
-};
-
-const Page = () => {
-  return (
-    <Suspense>
-      <StudySet />
-    </Suspense>
   );
 };
 
