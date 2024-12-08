@@ -1,6 +1,6 @@
 "use client";
 
-import { useFlashcardData } from "../../../hooks/useFlashcardData";
+import { Flashcard, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,10 @@ type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
 
 function PracticePage() {
-  const { flashcards, setFlashcards } = useFlashcardData();
+  const { flashcards } = useFlashcardData();
+  const [shuffledCards, setShuffledCards] = useState<Flashcard[]>([
+    { id: 1, set: -1, term: "Loading...", definition: "Loading...", difficulty: "New" },
+  ]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [quizMode, setQuizMode] = useState<QuizMode>("both");
   const [answerType, setAnswerType] = useState<AnswerType>("short-answer");
@@ -38,16 +41,16 @@ function PracticePage() {
   }, [answerType]);
 
   const shuffleCards = useCallback(() => {
-    setFlashcards([...flashcards].sort(() => Math.random() - 0.5));
+    setShuffledCards([...flashcards].sort(() => Math.random() - 0.5));
     setCurrentCardIndex(0);
     setShowAnswer(false);
     setIsTermQuestion(newIsTermQuestion());
     setIsShortAnswerQuestion(newIsShortAnswerQuestion());
-  }, [newIsTermQuestion, newIsShortAnswerQuestion]);
+  }, [newIsTermQuestion, newIsShortAnswerQuestion, flashcards]);
 
   const nextQuestion = useCallback(() => {
     setAnswerSubmitted(false);
-    if (currentCardIndex < flashcards.length - 1) {
+    if (currentCardIndex < shuffledCards.length - 1) {
       setCurrentCardIndex(currentCardIndex + 1);
     } else {
       shuffleCards();
@@ -55,7 +58,7 @@ function PracticePage() {
     setIsCorrect(false);
     setUserAnswer("");
     setShowAnswer(false);
-  }, [currentCardIndex, flashcards, shuffleCards]);
+  }, [currentCardIndex, shuffledCards, shuffleCards]);
 
   const validateAnswer = (guess: string, rightAnswer: string): boolean => {
     // normalize NFKD is used here to turn subscript and superscript characters to their normal counterparts
@@ -68,14 +71,16 @@ function PracticePage() {
     // handle duplicate definitions or terms
     if (isTermQuestion) {
       return (
-        guess in flashcards.filter((flashcard) => flashcard.definition === guess).map((flashcard) => flashcard.term)
+        guess in shuffledCards.filter((flashcard) => flashcard.definition === guess).map((flashcard) => flashcard.term)
       );
     } else {
       return (
-        guess in flashcards.filter((flashcard) => flashcard.term === guess).map((flashcard) => flashcard.definition)
+        guess in shuffledCards.filter((flashcard) => flashcard.term === guess).map((flashcard) => flashcard.definition)
       );
     }
   };
+
+  useEffect(shuffleCards, [flashcards]);
 
   useEffect(() => {
     if (isShortAnswerQuestion && inputRef.current) {
@@ -84,7 +89,7 @@ function PracticePage() {
     }
   }, [isShortAnswerQuestion, currentCardIndex]);
 
-  const currentCard = flashcards[currentCardIndex];
+  const currentCard = shuffledCards[currentCardIndex];
   useEffect(() => {
     setIsTermQuestion(newIsTermQuestion());
     setIsShortAnswerQuestion(newIsShortAnswerQuestion());
@@ -98,8 +103,8 @@ function PracticePage() {
 
   const generateOptions = () => {
     const options = [correctAnswer];
-    while (new Set(options).size < Math.min(4, flashcards.length)) {
-      const randomCard = flashcards[Math.floor(Math.random() * flashcards.length)];
+    while (new Set(options).size < Math.min(4, shuffledCards.length)) {
+      const randomCard = shuffledCards[Math.floor(Math.random() * shuffledCards.length)];
       const randomAnswer = isTermQuestion ? randomCard.term : randomCard.definition;
       if (!options.includes(randomAnswer)) {
         options.push(randomAnswer);
