@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, PenTool, Brain, /*Puzzle,*/ Star, Edit } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 
 const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starred"];
 
@@ -186,35 +186,37 @@ const Page = () => {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">{status}</h1>
-      <FlashcardsDisplay flashcards={flashcards} />
+    <Suspense>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">{status}</h1>
+        <FlashcardsDisplay flashcards={flashcards} />
 
-      <div className="flex flex-wrap justify-center gap-2 mb-8">
-        <Button key="[COMING SOON]" variant="outline" asChild>
-          <Link href={`/study/coming-soon`}>
-            <PenTool className="h-4 w-4 mr-2" />
-            Coming Soon
-          </Link>
-        </Button>
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          <Button key="[COMING SOON]" variant="outline" asChild>
+            <Link href={`/study/coming-soon`}>
+              <PenTool className="h-4 w-4 mr-2" />
+              Coming Soon
+            </Link>
+          </Button>
 
-        <Button
-          key="Practice"
-          variant="outline"
-          asChild
-          className={`
+          <Button
+            key="Practice"
+            variant="outline"
+            asChild
+            className={`
             ${isGlowing && "shadow-[0_0_25px_rgba(255,0,203,0.7)]"}
           `}
-        >
-          <Link href={`/study/practice`}>
-            <Brain className="h-4 w-4 mr-2" />
-            Practice
-          </Link>
-        </Button>
-      </div>
+          >
+            <Link href={`/study/practice`}>
+              <Brain className="h-4 w-4 mr-2" />
+              Practice
+            </Link>
+          </Button>
+        </div>
 
-      <FlashcardTable flashcards={flashcards} />
-    </div>
+        <FlashcardTable flashcards={flashcards} />
+      </div>
+    </Suspense>
   );
 };
 
