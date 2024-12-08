@@ -11,11 +11,12 @@ import { useState, useEffect, Suspense } from "react";
 
 const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starred"];
 
-type FlashcardTableProps = {
+type FlashcardProps = {
   flashcards: Flashcard[];
 };
 
-const FlashcardTable = (props: FlashcardTableProps) => {
+const FlashcardTable = (props: FlashcardProps) => {
+  const flashcards = props.flashcards;
   const [starredCards, setStarredCards] = useState<number[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
   const toggleStar = (id: number) => {
@@ -24,8 +25,8 @@ const FlashcardTable = (props: FlashcardTableProps) => {
 
   const filteredCards =
     activeFilter === "All"
-      ? props.flashcards
-      : props.flashcards.filter((card) =>
+      ? flashcards
+      : flashcards.filter((card) =>
           activeFilter === "Starred" ? starredCards.includes(card.id) : card.difficulty === activeFilter
         );
 
@@ -94,11 +95,11 @@ const FlashcardTable = (props: FlashcardTableProps) => {
   );
 };
 
-const StudySet = () => {
+const FlashcardsDisplay = (props: FlashcardProps) => {
+  const flashcards = props.flashcards;
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [direction, setDirection] = useState(0);
-  const { flashcards, status } = useFlashcardData();
 
   const handlePrevCard = () => {
     if (currentCardIndex > 0) {
@@ -120,6 +121,63 @@ const StudySet = () => {
     setIsFlipped(!isFlipped);
   };
 
+  return (
+    <div className="flex flex-col items-center mb-8">
+      <div className="flex justify-center items-center w-full max-w-2xl mb-4">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handlePrevCard}
+          disabled={currentCardIndex === 0}
+          aria-label="Previous card"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={currentCardIndex}
+            initial={{ opacity: 0, x: direction > 0 ? 100 : -100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: direction > 0 ? -100 : 100 }}
+            transition={{ duration: 0.3 }}
+            className="mx-4 w-full"
+          >
+            <Card className="w-full h-64 cursor-pointer perspective-1000" onClick={toggleCardFlip}>
+              <motion.div
+                animate={{ rotateY: isFlipped ? 180 : 0 }}
+                transition={{ duration: 0.5 }}
+                className="w-full h-full [transform-style:preserve-3d]"
+              >
+                <CardContent className="flex items-center justify-center h-full p-6 text-center absolute w-full [backface-visibility:hidden]">
+                  <p className="text-xl">{flashcards[currentCardIndex].term}</p>
+                </CardContent>
+                <CardContent className="flex items-center justify-center h-full p-6 text-center absolute w-full [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                  <p className="text-xl">{flashcards[currentCardIndex].definition}</p>
+                </CardContent>
+              </motion.div>
+            </Card>
+          </motion.div>
+        </AnimatePresence>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleNextCard}
+          disabled={currentCardIndex === flashcards.length - 1}
+          aria-label="Next card"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="text-sm text-muted-foreground">
+        Card {currentCardIndex + 1} of {flashcards.length}
+      </div>
+    </div>
+  );
+};
+
+const StudySet = () => {
+  const { flashcards, status } = useFlashcardData();
+
   const [isGlowing, setIsGlowing] = useState(true);
 
   useEffect(() => {
@@ -130,56 +188,7 @@ const StudySet = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">{status}</h1>
-      <div className="flex flex-col items-center mb-8">
-        <div className="flex justify-center items-center w-full max-w-2xl mb-4">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handlePrevCard}
-            disabled={currentCardIndex === 0}
-            aria-label="Previous card"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={currentCardIndex}
-              initial={{ opacity: 0, x: direction > 0 ? 100 : -100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: direction > 0 ? -100 : 100 }}
-              transition={{ duration: 0.3 }}
-              className="mx-4 w-full"
-            >
-              <Card className="w-full h-64 cursor-pointer perspective-1000" onClick={toggleCardFlip}>
-                <motion.div
-                  animate={{ rotateY: isFlipped ? 180 : 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="w-full h-full [transform-style:preserve-3d]"
-                >
-                  <CardContent className="flex items-center justify-center h-full p-6 text-center absolute w-full [backface-visibility:hidden]">
-                    <p className="text-xl">{flashcards[currentCardIndex].term}</p>
-                  </CardContent>
-                  <CardContent className="flex items-center justify-center h-full p-6 text-center absolute w-full [backface-visibility:hidden] [transform:rotateY(180deg)]">
-                    <p className="text-xl">{flashcards[currentCardIndex].definition}</p>
-                  </CardContent>
-                </motion.div>
-              </Card>
-            </motion.div>
-          </AnimatePresence>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleNextCard}
-            disabled={currentCardIndex === flashcards.length - 1}
-            aria-label="Next card"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          Card {currentCardIndex + 1} of {flashcards.length}
-        </div>
-      </div>
+      <FlashcardsDisplay flashcards={flashcards} />
 
       <div className="flex flex-wrap justify-center gap-2 mb-8">
         <Button key="[COMING SOON]" variant="outline" asChild>
