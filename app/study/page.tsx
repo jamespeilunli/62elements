@@ -15,86 +15,6 @@ type FlashcardProps = {
   flashcards: Flashcard[];
 };
 
-const FlashcardTable = (props: FlashcardProps) => {
-  const flashcards = props.flashcards;
-  const [starredCards, setStarredCards] = useState<number[]>([]);
-  const [activeFilter, setActiveFilter] = useState("All");
-  const toggleStar = (id: number) => {
-    setStarredCards((prev) => (prev.includes(id) ? prev.filter((cardId) => cardId !== id) : [...prev, id]));
-  };
-
-  const filteredCards =
-    activeFilter === "All"
-      ? flashcards
-      : flashcards.filter((card) =>
-          activeFilter === "Starred" ? starredCards.includes(card.id) : card.difficulty === activeFilter
-        );
-
-  return (
-    <div>
-      <div className="mt-24">
-        <h2 className="text-3xl font-bold mb-4">Flashcards List</h2>
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          <Button variant={activeFilter === "All" ? "default" : "outline"} onClick={() => setActiveFilter("All")}>
-            All
-          </Button>
-          {filterCategories.map((category) => (
-            <Button
-              key={category}
-              variant={activeFilter === category ? "default" : "outline"}
-              onClick={() => setActiveFilter(category)}
-            >
-              {category === "Starred" && <Star className="h-4 w-4 mr-2" />}
-              {category}
-            </Button>
-          ))}
-        </div>
-      </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Term</TableHead>
-            <TableHead>Definition</TableHead>
-            <TableHead>Difficulty</TableHead>
-            <TableHead className="w-[100px]">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredCards.map((card) => (
-            <TableRow key={card.id}>
-              <TableCell>{card.term}</TableCell>
-              <TableCell>{card.definition}</TableCell>
-              <TableCell>{card.difficulty}</TableCell>
-              <TableCell>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => toggleStar(card.id)}
-                    aria-label={starredCards.includes(card.id) ? "Unstar" : "Star"}
-                  >
-                    <Star className={`h-4 w-4 ${starredCards.includes(card.id) ? "fill-yellow-400" : ""}`} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      /* Implement edit functionality */
-                    }}
-                    aria-label="Edit"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-};
-
 const FlashcardsDisplay = (props: FlashcardProps) => {
   const flashcards = props.flashcards;
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -171,6 +91,86 @@ const FlashcardsDisplay = (props: FlashcardProps) => {
       <div className="text-sm text-muted-foreground">
         Card {currentCardIndex + 1} of {flashcards.length}
       </div>
+    </div>
+  );
+};
+
+const FlashcardTable = (props: FlashcardProps) => {
+  const flashcards = props.flashcards;
+  const [starredCards, setStarredCards] = useState<number[]>([]);
+  const [activeFilter, setActiveFilter] = useState("All");
+  const toggleStar = (id: number) => {
+    setStarredCards((prev) => (prev.includes(id) ? prev.filter((cardId) => cardId !== id) : [...prev, id]));
+  };
+
+  const filteredCards =
+    activeFilter === "All"
+      ? flashcards
+      : flashcards.filter((card) =>
+          activeFilter === "Starred" ? starredCards.includes(card.id) : card.difficulty === activeFilter
+        );
+
+  return (
+    <div>
+      <div className="mt-24">
+        <h2 className="text-3xl font-bold mb-4">Flashcards List</h2>
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          <Button variant={activeFilter === "All" ? "default" : "outline"} onClick={() => setActiveFilter("All")}>
+            All
+          </Button>
+          {filterCategories.map((category) => (
+            <Button
+              key={category}
+              variant={activeFilter === category ? "default" : "outline"}
+              onClick={() => setActiveFilter(category)}
+            >
+              {category === "Starred" && <Star className="h-4 w-4 mr-2" />}
+              {category}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Term</TableHead>
+            <TableHead>Definition</TableHead>
+            <TableHead>Difficulty</TableHead>
+            <TableHead className="w-[100px]">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {filteredCards.map((card) => (
+            <TableRow key={card.id}>
+              <TableCell>{card.term}</TableCell>
+              <TableCell>{card.definition}</TableCell>
+              <TableCell>{card.difficulty}</TableCell>
+              <TableCell>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => toggleStar(card.id)}
+                    aria-label={starredCards.includes(card.id) ? "Unstar" : "Star"}
+                  >
+                    <Star className={`h-4 w-4 ${starredCards.includes(card.id) ? "fill-yellow-400" : ""}`} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      /* Implement edit functionality */
+                    }}
+                    aria-label="Edit"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };
