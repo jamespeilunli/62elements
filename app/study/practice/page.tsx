@@ -32,10 +32,6 @@ function PracticePage() {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setShuffledCards([...flashcards].sort(() => Math.random() - 0.5));
-  }, [flashcards]);
-
   const newIsTermQuestion = useCallback(() => {
     return quizMode === "term-to-definition" || (quizMode === "both" && Math.random() < 0.5);
   }, [quizMode]);
@@ -45,12 +41,12 @@ function PracticePage() {
   }, [answerType]);
 
   const shuffleCards = useCallback(() => {
-    setShuffledCards([...shuffledCards].sort(() => Math.random() - 0.5));
+    setShuffledCards([...flashcards].sort(() => Math.random() - 0.5));
     setCurrentCardIndex(0);
     setShowAnswer(false);
     setIsTermQuestion(newIsTermQuestion());
     setIsShortAnswerQuestion(newIsShortAnswerQuestion());
-  }, [newIsTermQuestion, newIsShortAnswerQuestion]);
+  }, [newIsTermQuestion, newIsShortAnswerQuestion, flashcards]);
 
   const nextQuestion = useCallback(() => {
     setAnswerSubmitted(false);
@@ -83,6 +79,8 @@ function PracticePage() {
       );
     }
   };
+
+  useEffect(shuffleCards, [flashcards]);
 
   useEffect(() => {
     if (isShortAnswerQuestion && inputRef.current) {
