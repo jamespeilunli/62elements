@@ -50,14 +50,17 @@ function PracticePage() {
 
   const nextQuestion = useCallback(() => {
     setAnswerSubmitted(false);
+    setIsCorrect(false);
+    setUserAnswer("");
+    setShowAnswer(false);
+    setIsTermQuestion(newIsTermQuestion());
+    setIsShortAnswerQuestion(newIsShortAnswerQuestion());
+
     if (currentCardIndex < shuffledCards.length - 1) {
       setCurrentCardIndex(currentCardIndex + 1);
     } else {
       shuffleCards();
     }
-    setIsCorrect(false);
-    setUserAnswer("");
-    setShowAnswer(false);
   }, [currentCardIndex, shuffledCards, shuffleCards]);
 
   const validateAnswer = (guess: string, rightAnswer: string): boolean => {
@@ -90,14 +93,6 @@ function PracticePage() {
   }, [isShortAnswerQuestion, currentCardIndex]);
 
   const currentCard = shuffledCards[currentCardIndex];
-  useEffect(() => {
-    setIsTermQuestion(newIsTermQuestion());
-    setIsShortAnswerQuestion(newIsShortAnswerQuestion());
-
-    setUserAnswer("");
-    setShowAnswer(false);
-  }, [currentCardIndex, quizMode, newIsTermQuestion, newIsShortAnswerQuestion]);
-
   const question = isTermQuestion ? currentCard.definition : currentCard.term;
   const correctAnswer = isTermQuestion ? currentCard.term : currentCard.definition;
 
