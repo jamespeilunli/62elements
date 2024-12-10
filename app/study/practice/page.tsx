@@ -40,25 +40,29 @@ function PracticePage() {
     return answerType === "short-answer" || (answerType === "both" && Math.random() < 0.5);
   }, [answerType]);
 
-  const shuffleCards = useCallback(() => {
-    setShuffledCards([...flashcards].sort(() => Math.random() - 0.5));
-    setCurrentCardIndex(0);
-    setShowAnswer(false);
-    setIsTermQuestion(newIsTermQuestion());
-    setIsShortAnswerQuestion(newIsShortAnswerQuestion());
-  }, [newIsTermQuestion, newIsShortAnswerQuestion, flashcards]);
-
-  const nextQuestion = useCallback(() => {
+  const prepareQuestion = useCallback(() => {
     setAnswerSubmitted(false);
-    if (currentCardIndex < shuffledCards.length - 1) {
-      setCurrentCardIndex(currentCardIndex + 1);
-    } else {
-      shuffleCards();
-    }
     setIsCorrect(false);
     setUserAnswer("");
     setShowAnswer(false);
-  }, [currentCardIndex, shuffledCards, shuffleCards]);
+    setIsTermQuestion(newIsTermQuestion());
+    setIsShortAnswerQuestion(newIsShortAnswerQuestion());
+  }, [newIsTermQuestion, newIsShortAnswerQuestion]);
+
+  const shuffleCards = useCallback(() => {
+    setShuffledCards([...flashcards].sort(() => Math.random() - 0.5));
+    setCurrentCardIndex(0);
+    prepareQuestion();
+  }, [flashcards, prepareQuestion]);
+
+  const nextQuestion = useCallback(() => {
+    if (currentCardIndex < shuffledCards.length - 1) {
+      setCurrentCardIndex(currentCardIndex + 1);
+      prepareQuestion();
+    } else {
+      shuffleCards();
+    }
+  }, [currentCardIndex, shuffledCards, shuffleCards, prepareQuestion]);
 
   const validateAnswer = (guess: string, rightAnswer: string): boolean => {
     // normalize NFKD is used here to turn subscript and superscript characters to their normal counterparts
@@ -90,14 +94,6 @@ function PracticePage() {
   }, [isShortAnswerQuestion, currentCardIndex]);
 
   const currentCard = shuffledCards[currentCardIndex];
-  useEffect(() => {
-    setIsTermQuestion(newIsTermQuestion());
-    setIsShortAnswerQuestion(newIsShortAnswerQuestion());
-
-    setUserAnswer("");
-    setShowAnswer(false);
-  }, [currentCardIndex, quizMode, newIsTermQuestion, newIsShortAnswerQuestion]);
-
   const question = isTermQuestion ? currentCard.definition : currentCard.term;
   const correctAnswer = isTermQuestion ? currentCard.term : currentCard.definition;
 
