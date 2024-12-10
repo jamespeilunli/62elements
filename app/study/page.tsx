@@ -41,6 +41,18 @@ const FlashcardsDisplay = (props: FlashcardProps) => {
     setIsFlipped(!isFlipped);
   };
 
+  const variants = {
+    initial: (direction: number) => ({
+      opacity: 0,
+      x: direction === 1 ? 100 : -100,
+    }),
+
+    exit: (direction: number) => ({
+      opacity: 0,
+      x: direction === 1 ? -100 : 100,
+    }),
+  };
+
   return (
     <div className="flex flex-col items-center mb-8">
       <div className="flex justify-center items-center w-full max-w-2xl mb-4">
@@ -53,12 +65,14 @@ const FlashcardsDisplay = (props: FlashcardProps) => {
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="wait" initial={false} custom={direction}>
           <motion.div
             key={currentCardIndex}
-            initial={{ opacity: 0, x: direction > 0 ? 100 : -100 }}
+            custom={direction}
+            variants={variants}
+            initial="initial"
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: direction > 0 ? -100 : 100 }}
+            exit="exit"
             transition={{ duration: 0.3 }}
             className="mx-4 w-full"
           >
