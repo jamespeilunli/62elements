@@ -10,6 +10,41 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Check, X, Shuffle, RotateCcw } from "lucide-react";
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 
+type AnswerInputProp = {
+  userAnswer: string;
+  setUserAnswer: (userAnswer: string) => void;
+  handleAnswer: (userAnswer: string) => void;
+};
+
+function AnswerInput({ userAnswer, setUserAnswer, handleAnswer }: AnswerInputProp) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleAnswer(userAnswer);
+      }}
+    >
+      <Input
+        ref={inputRef}
+        type="text"
+        value={userAnswer}
+        onChange={(e) => setUserAnswer(e.target.value)}
+        placeholder="Type your answer here"
+        className="mb-4"
+      />
+      <Button type="submit">Submit Answer</Button>
+    </form>
+  );
+}
+
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
 
@@ -29,8 +64,6 @@ function PracticePage() {
   const [isTermQuestion, setIsTermQuestion] = useState(true);
   const [isShortAnswerQuestion, setIsShortAnswerQuestion] = useState(true);
   const [isCorrect, setIsCorrect] = useState(false);
-
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const newIsTermQuestion = useCallback(() => {
     return quizMode === "term-to-definition" || (quizMode === "both" && Math.random() < 0.5);
@@ -85,14 +118,6 @@ function PracticePage() {
   };
 
   useEffect(shuffleCards, [flashcards]);
-
-  useEffect(() => {
-    if (isShortAnswerQuestion && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.value = "";
-    }
-  }, [isShortAnswerQuestion, currentCardIndex]);
-
   const currentCard = shuffledCards[currentCardIndex];
   const question = isTermQuestion ? currentCard.definition : currentCard.term;
   const correctAnswer = isTermQuestion ? currentCard.term : currentCard.definition;
@@ -154,6 +179,10 @@ function PracticePage() {
     setScore(score + 1);
     nextQuestion();
   };
+
+  useEffect(() => {
+    console.log(question);
+  }, [question]);
 
   return (
     <div>
@@ -217,22 +246,7 @@ function PracticePage() {
               </RadioGroup>
             )}
             {!showAnswer && isShortAnswerQuestion && (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleAnswer(userAnswer);
-                }}
-              >
-                <Input
-                  ref={inputRef}
-                  type="text"
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  placeholder="Type your answer here"
-                  className="mb-4"
-                />
-                <Button type="submit">Submit Answer</Button>
-              </form>
+              <AnswerInput userAnswer={userAnswer} setUserAnswer={setUserAnswer} handleAnswer={handleAnswer} />
             )}
             {showAnswer && (
               <div className="mt-4">
