@@ -180,10 +180,6 @@ function PracticePage() {
     nextQuestion();
   };
 
-  useEffect(() => {
-    console.log(question);
-  }, [question]);
-
   return (
     <div>
       <div className="container mx-auto px-4 py-8">
