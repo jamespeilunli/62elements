@@ -29,6 +29,7 @@ function PracticePage() {
   const [isTermQuestion, setIsTermQuestion] = useState(true);
   const [isShortAnswerQuestion, setIsShortAnswerQuestion] = useState(true);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [hidden, setHidden] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -59,6 +60,13 @@ function PracticePage() {
     if (currentCardIndex < shuffledCards.length - 1) {
       setCurrentCardIndex(currentCardIndex + 1);
       prepareQuestion();
+
+      console.log(!!(isShortAnswerQuestion && inputRef.current));
+      if (isShortAnswerQuestion && inputRef.current) {
+        document.getElementById("form")!.className = "";
+        inputRef.current.focus();
+        inputRef.current.value = "";
+      }
     } else {
       shuffleCards();
     }
@@ -86,13 +94,6 @@ function PracticePage() {
 
   useEffect(shuffleCards, [flashcards]);
 
-  useEffect(() => {
-    if (isShortAnswerQuestion && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.value = "";
-    }
-  }, [isShortAnswerQuestion, currentCardIndex]);
-
   const currentCard = shuffledCards[currentCardIndex];
   const question = isTermQuestion ? currentCard.definition : currentCard.term;
   const correctAnswer = isTermQuestion ? currentCard.term : currentCard.definition;
@@ -113,6 +114,7 @@ function PracticePage() {
 
   const handleAnswer = useCallback(
     (answer: string) => {
+      document.getElementById("form")!.className = "hidden";
       setUserAnswer(answer);
       setShowAnswer(true);
       setTotalAttempts(totalAttempts + 1);
@@ -216,24 +218,24 @@ function PracticePage() {
                 </div>
               </RadioGroup>
             )}
-            {!showAnswer && isShortAnswerQuestion && (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleAnswer(userAnswer);
-                }}
-              >
-                <Input
-                  ref={inputRef}
-                  type="text"
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  placeholder="Type your answer here"
-                  className="mb-4"
-                />
-                <Button type="submit">Submit Answer</Button>
-              </form>
-            )}
+            <form
+              id="form"
+              className=""
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAnswer(userAnswer);
+              }}
+            >
+              <Input
+                ref={inputRef}
+                type="text"
+                value={userAnswer}
+                onChange={(e) => setUserAnswer(e.target.value)}
+                placeholder="Type your answer here"
+                className="mb-4"
+              />
+              <Button type="submit">Submit Answer</Button>
+            </form>
             {showAnswer && (
               <div className="mt-4">
                 <p className="font-semibold">
