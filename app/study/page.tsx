@@ -82,10 +82,10 @@ const FlashcardsDisplay = (props: FlashcardProps) => {
                 transition={{ duration: 0.5 }}
                 className="w-full h-full [transform-style:preserve-3d]"
               >
-                <CardContent className="flex items-center justify-center h-full p-6 text-center absolute w-full [backface-visibility:hidden]">
+                <CardContent className="flex items-center justify-center h-full p-6 text-center absolute w-full [backface-visibility:hidden] [transform:rotateX(0deg)] [transform:rotateY(0deg)]">
                   <p className="text-xl">{flashcards[currentCardIndex].term}</p>
                 </CardContent>
-                <CardContent className="flex items-center justify-center h-full p-6 text-center absolute w-full [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                <CardContent className="flex items-center justify-center h-full p-6 text-center absolute w-full [backface-visibility:hidden] [transform:rotateX(0deg)] [transform:rotateY(180deg)]">
                   <p className="text-xl">{flashcards[currentCardIndex].definition}</p>
                 </CardContent>
               </motion.div>
