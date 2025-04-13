@@ -320,7 +320,13 @@ function PracticePage() {
                 Next Question
               </Button>
               {!state.isCorrect && (
-                <Button onClick={() => dispatch({ type: "MARK_CORRECT" })} className="ml-4">
+                <Button
+                  onClick={() => {
+                    dispatch({ type: "MARK_CORRECT" });
+                    nextQuestion();
+                  }}
+                  className="ml-4"
+                >
                   I Was Right
                 </Button>
               )}
