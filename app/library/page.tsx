@@ -6,8 +6,16 @@ import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+type FlashcardSet = {
+  id: number;
+  title: string;
+  cards: number;
+  rating: number;
+  category: string;
+};
+
 export default function PopularFlashcardSets() {
-  const [sets, setSets] = useState([{ id: 0, title: "Loading...", cards: 0, rating: 5.0, category: "" }]);
+  const [sets, setSets] = useState<FlashcardSet[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,6 +31,7 @@ export default function PopularFlashcardSets() {
     <div className="flex flex-col bg-background">
       <main className="flex-1 py-12 container mx-auto px-4">
         <h1 className="text-3xl font-bold mb-6">Public Flashcard Library</h1>
+        {sets.length == 0 && <div className="container mx-auto px-4 py-8">Loading flashcard sets...</div>}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {sets.map((set) => (
             <Card key={set.id} className="flex flex-col justify-between">

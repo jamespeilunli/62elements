@@ -14,9 +14,7 @@ export type Flashcard = {
 
 export const useFlashcardData = () => {
   const searchParams = useSearchParams();
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([
-    { id: 1, set: -1, term: "Loading...", definition: "Loading...", difficulty: "New" },
-  ]);
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [status, setStatus] = useState<string>("Loading...");
 
   useEffect(() => {

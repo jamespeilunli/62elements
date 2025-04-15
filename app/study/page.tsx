@@ -121,7 +121,7 @@ const FlashcardTable = (props: FlashcardProps) => {
     activeFilter === "All"
       ? flashcards
       : flashcards.filter((card) =>
-          activeFilter === "Starred" ? starredCards.includes(card.id) : card.difficulty === activeFilter
+          activeFilter === "Starred" ? starredCards.includes(card.id) : card.difficulty === activeFilter,
         );
 
   return (
@@ -199,6 +199,8 @@ const StudySet = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  if (flashcards.length == 0) return <div className="container mx-auto px-4 py-8">Loading flashcards...</div>;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">{status}</h1>
@@ -234,7 +236,7 @@ const StudySet = () => {
 
 const Page = () => {
   return (
-    <Suspense>
+    <Suspense fallback={<div>Loading...</div>}>
       <StudySet />
     </Suspense>
   );
