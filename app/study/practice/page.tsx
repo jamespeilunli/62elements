@@ -1,6 +1,6 @@
 "use client";
 
-import { Flashcard, useFlashcardData } from "../../../hooks/useFlashcardData";
+import { Flashcard, weightToDifficulty, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
 
 interface PracticeState {
-  shuffledCards: Flashcard[];
+  flashcards: Flashcard[];
   currentCardIndex: number;
   quizMode: QuizMode;
   answerType: AnswerType;
@@ -40,7 +40,7 @@ type PracticeAction =
 function practiceReducer(state: PracticeState, action: PracticeAction): PracticeState {
   switch (action.type) {
     case "SHUFFLE_CARDS":
-      return { ...state, shuffledCards: action.cards, currentCardIndex: 0 };
+      return { ...state, flashcards: action.cards };
     case "SET_QUIZ_MODE":
       return { ...state, quizMode: action.quizMode };
     case "SET_ANSWER_TYPE":
@@ -48,18 +48,34 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
     case "SET_USER_ANSWER":
       return { ...state, userAnswer: action.userAnswer };
     case "SUBMIT_ANSWER":
+      const updatedFlashcards = [...state.flashcards];
+      const currentCard = updatedFlashcards[state.currentCardIndex];
+
+      updatedFlashcards[state.currentCardIndex] = {
+        ...currentCard,
+        weight: action.isCorrect
+          ? Math.min(currentCard.weight + 1, weightToDifficulty.length - 1)
+          : Math.max(currentCard.weight - 1, 0),
+      };
+
       return {
         ...state,
+        flashcards: updatedFlashcards,
         showAnswer: true,
         totalAttempts: state.totalAttempts + 1,
         score: action.isCorrect ? state.score + 1 : state.score,
         isCorrect: action.isCorrect,
       };
     case "NEXT_QUESTION": {
-      const nextIndex = state.currentCardIndex + 1;
-      return nextIndex < state.shuffledCards.length
-        ? { ...state, currentCardIndex: nextIndex }
-        : { ...state, shuffledCards: [...state.shuffledCards].sort(() => Math.random() - 0.5), currentCardIndex: 0 };
+      const hardestCardIndex = state.flashcards.reduce(
+        (prevIndex, curr, currIndex) => (curr.weight < state.flashcards[prevIndex].weight ? currIndex : prevIndex),
+        0,
+      );
+
+      return {
+        ...state,
+        currentCardIndex: hardestCardIndex,
+      };
     }
     case "PREPARE_QUESTION": {
       const isTermQuestion =
@@ -83,7 +99,7 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
 }
 
 const initialState: PracticeState = {
-  shuffledCards: [],
+  flashcards: [],
   currentCardIndex: 0,
   quizMode: "both",
   answerType: "short-answer",
@@ -174,11 +190,12 @@ function QuizControls({
 function PracticePage() {
   const { flashcards } = useFlashcardData();
   const [state, dispatch] = useReducer(practiceReducer, initialState);
-  const currentCard = state.shuffledCards[state.currentCardIndex];
+  const currentCard = state.flashcards[state.currentCardIndex];
 
   const shuffleCards = useCallback(() => {
     const shuffled = [...flashcards].sort(() => Math.random() - 0.5);
     dispatch({ type: "SHUFFLE_CARDS", cards: shuffled });
+    dispatch({ type: "NEXT_QUESTION" });
     dispatch({ type: "PREPARE_QUESTION" });
   }, [flashcards]);
 
@@ -197,13 +214,13 @@ function PracticePage() {
   const options = useMemo(() => {
     if (!currentCard) return [];
     const options = [correctAnswer];
-    while (new Set(options).size < Math.min(4, state.shuffledCards.length)) {
-      const randomCard = state.shuffledCards[Math.floor(Math.random() * state.shuffledCards.length)];
+    while (new Set(options).size < Math.min(4, state.flashcards.length)) {
+      const randomCard = state.flashcards[Math.floor(Math.random() * state.flashcards.length)];
       const randomAnswer = state.isTermQuestion ? randomCard.term : randomCard.definition;
       if (!options.includes(randomAnswer)) options.push(randomAnswer);
     }
     return options.sort(() => Math.random() - 0.5);
-  }, [currentCard, state.isTermQuestion, state.shuffledCards, correctAnswer]);
+  }, [currentCard, state.isTermQuestion, state.flashcards, correctAnswer]);
 
   const validateAnswer = useCallback(
     (guess: string) => {
@@ -213,12 +230,12 @@ function PracticePage() {
 
       if (normalizedGuess === normalizedCorrect) return true;
 
-      return state.shuffledCards.some((card) => {
+      return state.flashcards.some((card) => {
         const compareField = state.isTermQuestion ? card.term : card.definition;
         return normalize(compareField) === normalizedGuess;
       });
     },
-    [correctAnswer, state.isTermQuestion, state.shuffledCards],
+    [correctAnswer, state.isTermQuestion, state.flashcards],
   );
 
   const handleAnswer = useCallback(
