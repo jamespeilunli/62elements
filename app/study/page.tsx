@@ -1,6 +1,6 @@
 "use client";
 
-import { useFlashcardData, Flashcard } from "../../hooks/useFlashcardData";
+import { useFlashcardData, Flashcard, weightToDifficulty } from "../../hooks/useFlashcardData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -121,7 +121,9 @@ const FlashcardTable = (props: FlashcardProps) => {
     activeFilter === "All"
       ? flashcards
       : flashcards.filter((card) =>
-          activeFilter === "Starred" ? starredCards.includes(card.id) : card.difficulty === activeFilter,
+          activeFilter === "Starred"
+            ? starredCards.includes(card.id)
+            : weightToDifficulty[card.weight] === activeFilter,
         );
 
   return (
@@ -158,7 +160,7 @@ const FlashcardTable = (props: FlashcardProps) => {
             <TableRow key={card.id}>
               <TableCell>{card.term}</TableCell>
               <TableCell>{card.definition}</TableCell>
-              <TableCell>{card.difficulty}</TableCell>
+              <TableCell>{weightToDifficulty[card.weight]}</TableCell>
               <TableCell>
                 <div className="flex space-x-2">
                   <Button
