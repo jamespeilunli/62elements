@@ -32,22 +32,33 @@ export const useFlashcardData = () => {
 
     const fetchData = async () => {
       try {
-        const sets = await fetchFilteredTable("/api/get-sets", setId, "id");
+        const setsResponse = await fetchFilteredTable("/api/get-sets", setId, "id");
+        if (setsResponse.status !== 200) {
+          setStatus(`Error ${setsResponse.status}: Could not fetch sets`);
+          return;
+        }
+        const sets = setsResponse.data;
         if (sets.length === 0) {
           setStatus("Invalid flashcard set!");
           return;
         }
         setStatus(`Studying ${sets[0].title}`);
 
-        const cards = await fetchFilteredTable("/api/get-flashcards", setId, "set");
+        const cardsResponse = await fetchFilteredTable("/api/get-flashcards", setId, "set");
+        if (cardsResponse.status !== 200) {
+          setStatus(`Error ${cardsResponse.status}: Could not fetch cards`);
+          return;
+        }
+        const cards = cardsResponse.data;
+        if (cards.length === 0) {
+          setStatus("No flashcards found!");
+          return;
+        }
+
         const formattedCards = cards.map((card: Flashcard) => ({
           ...card,
           difficulty: "New",
         }));
-        if (formattedCards.length === 0) {
-          setStatus("No flashcards found!");
-          return;
-        }
         setFlashcards(formattedCards);
         localStorage.setItem("flashcards", JSON.stringify(formattedCards));
       } catch (error) {

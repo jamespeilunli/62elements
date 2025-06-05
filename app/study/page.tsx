@@ -199,37 +199,40 @@ const StudySet = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  if (flashcards.length == 0) return <div className="container mx-auto px-4 py-8">Loading flashcards...</div>;
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">{status}</h1>
-      <FlashcardsDisplay flashcards={flashcards} />
 
-      <div className="flex flex-wrap justify-center gap-2 mb-8">
-        <Button key="[COMING SOON]" variant="outline" asChild>
-          <Link href={`/study/coming-soon`}>
-            <PenTool className="h-4 w-4 mr-2" />
-            Coming Soon
-          </Link>
-        </Button>
+      {flashcards.length != 0 && (
+        <div>
+          <FlashcardsDisplay flashcards={flashcards} />
 
-        <Button
-          key="Practice"
-          variant="outline"
-          asChild
-          className={`
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            <Button key="[COMING SOON]" variant="outline" asChild>
+              <Link href={`/study/coming-soon`}>
+                <PenTool className="h-4 w-4 mr-2" />
+                Coming Soon
+              </Link>
+            </Button>
+
+            <Button
+              key="Practice"
+              variant="outline"
+              asChild
+              className={`
             ${isGlowing && "shadow-[0_0_25px_rgba(255,0,203,0.7)]"}
           `}
-        >
-          <Link href={`/study/practice`}>
-            <Brain className="h-4 w-4 mr-2" />
-            Practice
-          </Link>
-        </Button>
-      </div>
+            >
+              <Link href={`/study/practice`}>
+                <Brain className="h-4 w-4 mr-2" />
+                Practice
+              </Link>
+            </Button>
+          </div>
 
-      <FlashcardTable flashcards={flashcards} />
+          <FlashcardTable flashcards={flashcards} />
+        </div>
+      )}
     </div>
   );
 };
