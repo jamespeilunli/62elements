@@ -59,7 +59,11 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
       const nextIndex = state.currentCardIndex + 1;
       return nextIndex < state.shuffledCards.length
         ? { ...state, currentCardIndex: nextIndex }
-        : { ...state, shuffledCards: [...state.shuffledCards].sort(() => Math.random() - 0.5), currentCardIndex: 0 };
+        : {
+            ...state,
+            shuffledCards: [...state.shuffledCards].sort(() => Math.random() - 0.5),
+            currentCardIndex: 0,
+          };
     }
     case "PREPARE_QUESTION": {
       const isTermQuestion =
@@ -142,7 +146,12 @@ function QuizControls({
         <select
           id="quiz-mode"
           value={quizMode}
-          onChange={(e) => dispatch({ type: "SET_QUIZ_MODE", quizMode: e.target.value as QuizMode })}
+          onChange={(e) =>
+            dispatch({
+              type: "SET_QUIZ_MODE",
+              quizMode: e.target.value as QuizMode,
+            })
+          }
           className="border rounded p-2"
         >
           <option value="term-to-definition">Term to Definition</option>
@@ -155,7 +164,12 @@ function QuizControls({
         <select
           id="answer-type"
           value={answerType}
-          onChange={(e) => dispatch({ type: "SET_ANSWER_TYPE", answerType: e.target.value as AnswerType })}
+          onChange={(e) =>
+            dispatch({
+              type: "SET_ANSWER_TYPE",
+              answerType: e.target.value as AnswerType,
+            })
+          }
           className="border rounded p-2"
         >
           <option value="multiple-choice">Multiple Choice</option>
@@ -172,7 +186,7 @@ function QuizControls({
 }
 
 function PracticePage() {
-  const { flashcards } = useFlashcardData();
+  const { flashcards, status } = useFlashcardData();
   const [state, dispatch] = useReducer(practiceReducer, initialState);
   const currentCard = state.shuffledCards[state.currentCardIndex];
 
@@ -256,97 +270,98 @@ function PracticePage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [state.showAnswer, state.userAnswer, state.isShortAnswerQuestion, options, handleAnswer, nextQuestion]);
 
-  if (!currentCard) return <div className="container mx-auto px-4 py-8">Loading flashcards...</div>;
-
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Practice Mode</h1>
+      <h1 className="text-3xl font-bold mb-6">{currentCard ? "Practice Mode" : status}</h1>
+      {currentCard && (
+        <div>
+          <QuizControls
+            quizMode={state.quizMode}
+            answerType={state.answerType}
+            dispatch={dispatch}
+            shuffleCards={shuffleCards}
+          />
 
-      <QuizControls
-        quizMode={state.quizMode}
-        answerType={state.answerType}
-        dispatch={dispatch}
-        shuffleCards={shuffleCards}
-      />
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-semibold mb-4">{question}</h2>
 
-      <Card className="mb-6">
-        <CardContent className="p-6">
-          <h2 className="text-xl font-semibold mb-4">{question}</h2>
-
-          {!state.showAnswer && !state.isShortAnswerQuestion && (
-            <RadioGroup onValueChange={handleAnswer}>
-              <div className="space-y-3">
-                {options.map((option, index) => (
-                  <div key={index} className="flex items-center space-x-3">
-                    <RadioGroupItem value={option} id={`option-${index}`} className="peer sr-only" />
-                    <Label
-                      htmlFor={`option-${index}`}
-                      className="flex items-center space-x-3 text-sm cursor-pointer flex-grow"
-                    >
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full border-2 border-primary text-primary flex items-center justify-center text-sm font-medium transition-colors peer-checked:bg-primary peer-checked:text-primary-foreground">
-                        {index + 1}
+              {!state.showAnswer && !state.isShortAnswerQuestion && (
+                <RadioGroup onValueChange={handleAnswer}>
+                  <div className="space-y-3">
+                    {options.map((option, index) => (
+                      <div key={index} className="flex items-center space-x-3">
+                        <RadioGroupItem value={option} id={`option-${index}`} className="peer sr-only" />
+                        <Label
+                          htmlFor={`option-${index}`}
+                          className="flex items-center space-x-3 text-sm cursor-pointer flex-grow"
+                        >
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full border-2 border-primary text-primary flex items-center justify-center text-sm font-medium transition-colors peer-checked:bg-primary peer-checked:text-primary-foreground">
+                            {index + 1}
+                          </div>
+                          <span>{option}</span>
+                        </Label>
                       </div>
-                      <span>{option}</span>
-                    </Label>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </RadioGroup>
-          )}
-
-          {!state.showAnswer && state.isShortAnswerQuestion && (
-            <AnswerInput
-              userAnswer={state.userAnswer}
-              setUserAnswer={(value) => dispatch({ type: "SET_USER_ANSWER", userAnswer: value })}
-              handleAnswer={handleAnswer}
-            />
-          )}
-
-          {state.showAnswer && (
-            <div className="mt-4">
-              <p className="font-semibold">
-                {state.isCorrect ? (
-                  <span className="text-green-600 flex items-center">
-                    <Check className="h-5 w-5 mr-2" /> Correct!
-                  </span>
-                ) : (
-                  <span className="text-red-600 flex items-center">
-                    <X className="h-5 w-5 mr-2" /> {state.userAnswer} is incorrect. The correct answer is:{" "}
-                    {correctAnswer}
-                  </span>
-                )}
-              </p>
-              <Button onClick={nextQuestion} className="mt-4">
-                Next Question
-              </Button>
-              {!state.isCorrect && (
-                <Button
-                  onClick={() => {
-                    dispatch({ type: "MARK_CORRECT" });
-                    nextQuestion();
-                  }}
-                  className="ml-4"
-                >
-                  I Was Right
-                </Button>
+                </RadioGroup>
               )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-2">Progress</h3>
-        <Progress value={(state.score / state.totalAttempts) * 100 || 0} className="w-full" />
-        <p className="mt-2">
-          Score: {state.score} / {state.totalAttempts}
-        </p>
-      </div>
+              {!state.showAnswer && state.isShortAnswerQuestion && (
+                <AnswerInput
+                  userAnswer={state.userAnswer}
+                  setUserAnswer={(value) => dispatch({ type: "SET_USER_ANSWER", userAnswer: value })}
+                  handleAnswer={handleAnswer}
+                />
+              )}
 
-      <Button onClick={() => window.location.reload()} variant="outline">
-        <RotateCcw className="h-4 w-4 mr-2" />
-        Reset Practice Session
-      </Button>
+              {state.showAnswer && (
+                <div className="mt-4">
+                  <p className="font-semibold">
+                    {state.isCorrect ? (
+                      <span className="text-green-600 flex items-center">
+                        <Check className="h-5 w-5 mr-2" /> Correct!
+                      </span>
+                    ) : (
+                      <span className="text-red-600 flex items-center">
+                        <X className="h-5 w-5 mr-2" /> {state.userAnswer} is incorrect. The correct answer is:{" "}
+                        {correctAnswer}
+                      </span>
+                    )}
+                  </p>
+                  <Button onClick={nextQuestion} className="mt-4">
+                    Next Question
+                  </Button>
+                  {!state.isCorrect && (
+                    <Button
+                      onClick={() => {
+                        dispatch({ type: "MARK_CORRECT" });
+                        nextQuestion();
+                      }}
+                      className="ml-4"
+                    >
+                      I Was Right
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-2">Progress</h3>
+            <Progress value={(state.score / state.totalAttempts) * 100 || 0} className="w-full" />
+            <p className="mt-2">
+              Score: {state.score} / {state.totalAttempts}
+            </p>
+          </div>
+
+          <Button onClick={() => window.location.reload()} variant="outline">
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reset Practice Session
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
