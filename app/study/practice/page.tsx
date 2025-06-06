@@ -32,7 +32,7 @@ type PracticeAction =
   | { type: "SET_QUIZ_MODE"; quizMode: QuizMode }
   | { type: "SET_ANSWER_TYPE"; answerType: AnswerType }
   | { type: "SET_USER_ANSWER"; userAnswer: string }
-  | { type: "SUBMIT_ANSWER"; isCorrect: boolean }
+  | { type: "SUBMIT_ANSWER"; isCorrect: boolean; userAnswer: string }
   | { type: "NEXT_QUESTION" }
   | { type: "PREPARE_QUESTION" }
   | { type: "MARK_CORRECT" };
@@ -54,6 +54,7 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         totalAttempts: state.totalAttempts + 1,
         score: action.isCorrect ? state.score + 1 : state.score,
         isCorrect: action.isCorrect,
+        userAnswer: action.userAnswer,
       };
     case "NEXT_QUESTION": {
       const nextIndex = state.currentCardIndex + 1;
@@ -222,23 +223,20 @@ function PracticePage() {
   const validateAnswer = useCallback(
     (guess: string) => {
       const normalize = (str: string) => str.normalize("NFKD").replace(/−/g, "-").toLowerCase().trim();
-      const normalizedGuess = normalize(guess);
-      const normalizedCorrect = normalize(correctAnswer);
 
-      if (normalizedGuess === normalizedCorrect) return true;
-
-      return state.shuffledCards.some((card) => {
-        const compareField = state.isTermQuestion ? card.term : card.definition;
-        return normalize(compareField) === normalizedGuess;
-      });
+      return normalize(guess) === normalize(correctAnswer);
     },
-    [correctAnswer, state.isTermQuestion, state.shuffledCards],
+    [correctAnswer],
   );
 
   const handleAnswer = useCallback(
     (answer: string) => {
       const isCorrect = validateAnswer(answer);
-      dispatch({ type: "SUBMIT_ANSWER", isCorrect: isCorrect });
+      dispatch({
+        type: "SUBMIT_ANSWER",
+        isCorrect,
+        userAnswer: answer,
+      });
     },
     [validateAnswer],
   );
@@ -255,10 +253,9 @@ function PracticePage() {
           nextQuestion();
           event.preventDefault();
         }
-      } else if (!state.userAnswer && !state.isShortAnswerQuestion) {
-        const key = event.key;
-        if (["1", "2", "3", "4"].includes(key)) {
-          const index = parseInt(key) - 1;
+      } else if (!state.isShortAnswerQuestion) {
+        if (["1", "2", "3", "4"].includes(event.key)) {
+          const index = parseInt(event.key) - 1;
           if (options[index]) {
             handleAnswer(options[index]);
           }
@@ -268,7 +265,7 @@ function PracticePage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [state.showAnswer, state.userAnswer, state.isShortAnswerQuestion, options, handleAnswer, nextQuestion]);
+  }, [state.showAnswer, state.isShortAnswerQuestion, state.userAnswer, options, handleAnswer, nextQuestion]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -324,8 +321,9 @@ function PracticePage() {
                       </span>
                     ) : (
                       <span className="text-red-600 flex items-center">
-                        <X className="h-5 w-5 mr-2" /> {state.userAnswer} is incorrect. The correct answer is:{" "}
-                        {correctAnswer}
+                        <X className="h-5 w-5 mr-2" />
+                        {state.userAnswer ? `${state.userAnswer} is incorrect. ` : ""}
+                        The correct answer is: {correctAnswer}
                       </span>
                     )}
                   </p>
