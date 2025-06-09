@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Check, X, Shuffle, RotateCcw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useReducer, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useReducer, Suspense, useState } from "react";
 
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
@@ -31,7 +31,6 @@ type PracticeAction =
   | { type: "SHUFFLE_CARDS"; cards: Flashcard[] }
   | { type: "SET_QUIZ_MODE"; quizMode: QuizMode }
   | { type: "SET_ANSWER_TYPE"; answerType: AnswerType }
-  | { type: "SET_USER_ANSWER"; userAnswer: string }
   | { type: "SUBMIT_ANSWER"; isCorrect: boolean; userAnswer: string }
   | { type: "NEXT_QUESTION" }
   | { type: "PREPARE_QUESTION" }
@@ -45,8 +44,6 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
       return { ...state, quizMode: action.quizMode };
     case "SET_ANSWER_TYPE":
       return { ...state, answerType: action.answerType };
-    case "SET_USER_ANSWER":
-      return { ...state, userAnswer: action.userAnswer };
     case "SUBMIT_ANSWER":
       const updatedFlashcards = [...state.flashcards];
       const currentCard = updatedFlashcards[state.currentCardIndex];
@@ -113,15 +110,8 @@ const initialState: PracticeState = {
   isCorrect: false,
 };
 
-function AnswerInput({
-  userAnswer,
-  setUserAnswer,
-  handleAnswer,
-}: {
-  userAnswer: string;
-  setUserAnswer: (value: string) => void;
-  handleAnswer: (value: string) => void;
-}) {
+function AnswerInput({ handleAnswer }: { handleAnswer: (value: string) => void }) {
+  const [userAnswer, setUserAnswer] = useState("");
   return (
     <form
       onSubmit={(e) => {
@@ -131,7 +121,6 @@ function AnswerInput({
     >
       <Input
         autoFocus
-        value={userAnswer}
         onChange={(e) => setUserAnswer(e.target.value)}
         placeholder="Type your answer here"
         className="mb-4"
@@ -317,13 +306,7 @@ function PracticePage() {
                 </RadioGroup>
               )}
 
-              {!state.showAnswer && state.isShortAnswerQuestion && (
-                <AnswerInput
-                  userAnswer={state.userAnswer}
-                  setUserAnswer={(value) => dispatch({ type: "SET_USER_ANSWER", userAnswer: value })}
-                  handleAnswer={handleAnswer}
-                />
-              )}
+              {!state.showAnswer && state.isShortAnswerQuestion && <AnswerInput handleAnswer={handleAnswer} />}
 
               {state.showAnswer && (
                 <div className="mt-4">
