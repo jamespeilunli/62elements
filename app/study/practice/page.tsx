@@ -53,7 +53,7 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         weight: action.isCorrect
           ? Math.min(currentCard.weight + 1, weightToDifficulty.length - 1)
           : Math.max(currentCard.weight - 1, 0),
-        lastStudied: Date.now(),
+        lastAttempt: state.totalAttempts + 1,
       };
 
       return {
@@ -66,13 +66,13 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         userAnswer: action.userAnswer,
       };
     case "NEXT_QUESTION": {
-      const currentTime = Date.now();
-
       const nextCardIndex = state.flashcards.reduce(
         (bestCard, card, index) => {
-          const hoursSinceReview = (currentTime - (card.lastStudied || 0)) / 3_600_000;
-          const priority = Math.log1p(hoursSinceReview) + (5 - card.weight) + 0.001 * Math.random();
+          const difficultyFactor = weightToDifficulty.length - card.weight;
+          const recencyFactor = (state.totalAttempts - (card.lastAttempt || 0)) / state.flashcards.length;
+          const randomFactor = Math.random();
 
+          const priority = difficultyFactor + recencyFactor + 0.1 * randomFactor;
           return priority > bestCard.priority ? { index, priority } : bestCard;
         },
         { index: 0, priority: -Infinity },

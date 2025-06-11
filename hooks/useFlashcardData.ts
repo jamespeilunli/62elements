@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
 export type Difficulty = "New" | "Challenging" | "Familiar" | "Proficient";
-export const weightToDifficulty: Difficulty[] = ["New", "Challenging", "Familiar", "Proficient"];
+export const weightToDifficulty: Difficulty[] = ["Challenging", "New", "Familiar", "Proficient"];
 
 export type Flashcard = {
   id: number;
@@ -13,7 +13,7 @@ export type Flashcard = {
   term: string;
   definition: string;
   weight: number;
-  lastStudied: number;
+  lastAttempt: number;
 };
 
 export const useFlashcardData = () => {
@@ -61,8 +61,8 @@ export const useFlashcardData = () => {
 
         const formattedCards = cards.map((card: Flashcard) => ({
           ...card,
-          weight: 0,
-          lastStudied: Date.now(),
+          weight: 1,
+          lastAttempt: 0,
         }));
         setFlashcards(formattedCards);
         localStorage.setItem("flashcards", JSON.stringify(formattedCards));
