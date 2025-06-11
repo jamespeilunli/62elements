@@ -4,12 +4,16 @@ import { fetchFilteredTable } from "../lib/utils";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
+export type Difficulty = "New" | "Challenging" | "Familiar" | "Proficient";
+export const weightToDifficulty: Difficulty[] = ["New", "Challenging", "Familiar", "Proficient"];
+
 export type Flashcard = {
   id: number;
   set: number;
   term: string;
   definition: string;
-  difficulty: string;
+  weight: number;
+  lastStudied: number;
 };
 
 export const useFlashcardData = () => {
@@ -57,7 +61,8 @@ export const useFlashcardData = () => {
 
         const formattedCards = cards.map((card: Flashcard) => ({
           ...card,
-          difficulty: "New",
+          weight: 0,
+          lastStudied: Date.now(),
         }));
         setFlashcards(formattedCards);
         localStorage.setItem("flashcards", JSON.stringify(formattedCards));
