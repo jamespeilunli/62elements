@@ -53,6 +53,7 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         weight: action.isCorrect
           ? Math.min(currentCard.weight + 1, weightToDifficulty.length - 1)
           : Math.max(currentCard.weight - 1, 0),
+        lastStudied: Date.now(),
       };
 
       return {
@@ -65,15 +66,19 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         userAnswer: action.userAnswer,
       };
     case "NEXT_QUESTION": {
-      const hardestCardIndex = state.flashcards.reduce(
-        (prevIndex, curr, currIndex) => (curr.weight < state.flashcards[prevIndex].weight ? currIndex : prevIndex),
-        0,
-      );
+      const currentTime = Date.now();
 
-      return {
-        ...state,
-        currentCardIndex: hardestCardIndex,
-      };
+      const nextCardIndex = state.flashcards.reduce(
+        (bestCard, card, index) => {
+          const hoursSinceReview = (currentTime - (card.lastStudied || 0)) / 3_600_000;
+          const priority = Math.log1p(hoursSinceReview) + (5 - card.weight) + 0.001 * Math.random();
+
+          return priority > bestCard.priority ? { index, priority } : bestCard;
+        },
+        { index: 0, priority: -Infinity },
+      ).index;
+
+      return { ...state, currentCardIndex: nextCardIndex };
     }
     case "PREPARE_QUESTION": {
       const isTermQuestion =

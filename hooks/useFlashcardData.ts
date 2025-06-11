@@ -13,6 +13,7 @@ export type Flashcard = {
   term: string;
   definition: string;
   weight: number;
+  lastStudied: number;
 };
 
 export const useFlashcardData = () => {
@@ -61,6 +62,7 @@ export const useFlashcardData = () => {
         const formattedCards = cards.map((card: Flashcard) => ({
           ...card,
           weight: 0,
+          lastStudied: Date.now(),
         }));
         setFlashcards(formattedCards);
         localStorage.setItem("flashcards", JSON.stringify(formattedCards));
