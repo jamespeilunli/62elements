@@ -1,5 +1,4 @@
 "use client";
-// pages/login.tsx
 import { supabase } from "../../lib/supabaseClient";
 
 export default function LoginPage() {
@@ -8,7 +7,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: process.env.NEXT_PUBLIC_VERCEL_URL + "/", // or wherever you want
+        redirectTo: process.env.NEXT_PUBLIC_VERCEL_URL + "/",
       },
     });
     if (error) console.error("Error logging in with Google:", error.message);

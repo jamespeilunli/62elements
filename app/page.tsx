@@ -6,48 +6,10 @@ import { Input } from "@/components/ui/input";
 import { FlaskConical } from "lucide-react";
 import { BookOpen, Brain, Zap } from "lucide-react";
 import Link from "next/link";
-import { supabase } from "../lib/supabaseClient";
-import { useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
-
-function DashboardPage() {
-  const [session, setSession] = useState<Session | null>(null);
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Error getting session:", error.message);
-        return;
-      }
-      setSession(data.session);
-    };
-
-    getSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (!session) return <p>Redirecting or not signed in...</p>;
-
-  return (
-    <div>
-      <h1>Welcome, {session.user.email}</h1>
-      <button onClick={() => supabase.auth.signOut()}>Sign Out</button>
-    </div>
-  );
-}
 
 export default function Component() {
   return (
     <div className="flex flex-col">
-      <DashboardPage></DashboardPage>
       <main className="flex-1">
         <section className="w-full py-16 md:py-20 lg:py-30 xl:py-40">
           <div className="container px-4 md:px-6 mx-auto max-w-[1200px]">
