@@ -3,6 +3,7 @@
 import { supabase } from "../../lib/supabaseClient";
 
 export default function LoginPage() {
+  console.log("URL", process.env.NEXT_PUBLIC_VERCEL_URL);
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
