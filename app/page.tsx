@@ -6,23 +6,32 @@ import { Input } from "@/components/ui/input";
 import { FlaskConical } from "lucide-react";
 import { BookOpen, Brain, Zap } from "lucide-react";
 import Link from "next/link";
-
 import { supabase } from "../lib/supabaseClient";
 import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 
 function DashboardPage() {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    const getSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error("Error getting session:", error.message);
+        return;
+      }
       setSession(data.session);
+    };
+
+    getSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => listener.subscription.unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   if (!session) return <p>Redirecting or not signed in...</p>;
