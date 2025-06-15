@@ -1,3 +1,4 @@
+"use client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,9 +7,38 @@ import { FlaskConical } from "lucide-react";
 import { BookOpen, Brain, Zap } from "lucide-react";
 import Link from "next/link";
 
+import { supabase } from "../lib/supabaseClient";
+import { useEffect, useState } from "react";
+
+function DashboardPage() {
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  if (!session) return <p>Redirecting or not signed in...</p>;
+
+  return (
+    <div>
+      <h1>Welcome, {session.user.email}</h1>
+      <button onClick={() => supabase.auth.signOut()}>Sign Out</button>
+    </div>
+  );
+}
+
 export default function Component() {
   return (
     <div className="flex flex-col">
+      <DashboardPage></DashboardPage>
       <main className="flex-1">
         <section className="w-full py-16 md:py-20 lg:py-30 xl:py-40">
           <div className="container px-4 md:px-6 mx-auto max-w-[1200px]">
@@ -94,9 +124,7 @@ export default function Component() {
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Start Learning Today</h2>
-                <p className="mx-auto max-w-[600px]  md:text-xl ">
-                  Sign in [COMING SOON]
-                </p>
+                <p className="mx-auto max-w-[600px]  md:text-xl ">Sign in [COMING SOON]</p>
               </div>
               <div className="w-full max-w-sm space-y-2">
                 <form className="flex space-x-2">
