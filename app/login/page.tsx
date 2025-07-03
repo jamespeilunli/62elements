@@ -1,21 +1,20 @@
 "use client";
-import { supabase } from "../../lib/supabaseClient";
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { GoogleLogin } from "@/components/google-login";
 
 export default function LoginPage() {
-  const handleGoogleLogin = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: process.env.NEXT_PUBLIC_VERCEL_URL + "/",
-      },
-    });
-    if (error) console.error("Error logging in with Google:", error.message);
-  };
-
   return (
-    <div className="login-page">
-      <h1>Login</h1>
-      <button onClick={handleGoogleLogin}>Sign in with Google</button>
+    <div className="flex justify-center items-center h-screen">
+      <Card className="mx-auto max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardDescription>Sign in with your Google account to continue</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <GoogleLogin />
+        </CardContent>
+      </Card>
     </div>
   );
 }
