@@ -1,8 +1,8 @@
 "use client";
+import { GoogleLogin } from "@/components/google-login";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { FlaskConical } from "lucide-react";
 import { BookOpen, Brain, Zap } from "lucide-react";
 import Link from "next/link";
@@ -95,23 +95,7 @@ export default function Component() {
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">Start Learning Today</h2>
-                <p className="mx-auto max-w-[600px]  md:text-xl ">Sign in [COMING SOON]</p>
-              </div>
-              <div className="w-full max-w-sm space-y-2">
-                <form className="flex space-x-2">
-                  <Input className="max-w-lg flex-1" placeholder="Enter your email" type="email" />
-                  <Button variant="outline" type="submit">
-                    Sign Up
-                  </Button>
-                </form>
-                {/*
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  By signing up, you agree to our{" "}
-                  <Link className="underline underline-offset-2" href="#">
-                    Terms & Conditions
-                  </Link>
-                </p>
-                */}
+                <GoogleLogin />
               </div>
             </div>
           </div>
