@@ -1,41 +1,19 @@
 "use client";
 import { BookOpen } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "@/contexts/AuthContext";
 
 function LoginButton() {
-  const [session, setSession] = useState<Session | null>(null);
+  const { session, signOut, loading } = useAuth();
 
-  useEffect(() => {
-    const getSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Error getting session:", error.message);
-        return;
-      }
-      setSession(data.session);
-    };
-
-    getSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div>
       {session ? (
-        <button
-          className="text-sm font-medium hover:underline underline-offset-4"
-          onClick={() => supabase.auth.signOut()}
-        >
+        <button className="text-sm font-medium hover:underline underline-offset-4" onClick={signOut}>
           Sign Out
         </button>
       ) : (
