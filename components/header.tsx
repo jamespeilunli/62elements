@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ProfileDropdownMenu } from "./profile-dropdown";
 
 const Header = () => {
-  const { session, signOut, loading } = useAuth();
+  const { session } = useAuth();
 
   return (
     <header className="px-4 lg:px-6 h-14 flex items-center border-b">
