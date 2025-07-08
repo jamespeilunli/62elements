@@ -2,30 +2,11 @@
 import { BookOpen } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-
-function LoginButton() {
-  const { session, signOut, loading } = useAuth();
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  return (
-    <div>
-      {session ? (
-        <button className="text-sm font-medium hover:underline underline-offset-4" onClick={signOut}>
-          Sign Out
-        </button>
-      ) : (
-        <Link className="text-sm font-medium hover:underline underline-offset-4" href="/login">
-          Log In
-        </Link>
-      )}
-    </div>
-  );
-}
+import ProfileDropdownMenu from "./profile-dropdown";
 
 const Header = () => {
+  const { session, signOut, loading } = useAuth();
+
   return (
     <header className="px-4 lg:px-6 h-14 flex items-center border-b">
       <Link className="flex items-center justify-center" href="/">
@@ -33,13 +14,21 @@ const Header = () => {
         <span className="font-bold hover:underline underline-offset-4">62elements</span>
       </Link>
       <nav className="ml-auto flex items-center gap-4 sm:gap-6">
-        <LoginButton />
         <Link className="text-sm font-medium hover:underline underline-offset-4" href="/library">
           Library
         </Link>
         <Link className="text-sm font-medium hover:underline underline-offset-4" href="/about">
           About
         </Link>
+        <div>
+          {session ? (
+            <ProfileDropdownMenu />
+          ) : (
+            <Link className="text-sm font-medium hover:underline underline-offset-4" href="/login">
+              Log In
+            </Link>
+          )}
+        </div>
       </nav>
     </header>
   );
