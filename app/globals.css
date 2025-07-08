@@ -5,7 +5,17 @@
 button {
   touch-action: manipulation;
 }
+/* Global CSS - not scoped */
+[data-radix-dropdown-menu-trigger]:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
 
+/* Or more specifically for shadcn/ui */
+.dropdown-menu-trigger:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
 @layer utilities {
   .text-balance {
     text-wrap: balance;

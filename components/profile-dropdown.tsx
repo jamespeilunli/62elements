@@ -30,7 +30,7 @@ export function ProfileDropdownMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="icon" className="rounded-full focus-visible">
+        <Button variant="secondary" size="icon" className="rounded-full">
           <div className="flex overflow-hidden rounded-full select-none h-8 w-8 shrink-0">
             {!imageError && avatarUrl ? (
               <Image
@@ -49,7 +49,7 @@ export function ProfileDropdownMenu() {
           </div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end">
+      <DropdownMenuContent className="w-56" align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
         <DropdownMenuLabel>{name ?? "My Account"}</DropdownMenuLabel>
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
