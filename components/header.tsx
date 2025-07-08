@@ -2,7 +2,7 @@
 import { BookOpen } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import ProfileDropdownMenu from "./profile-dropdown";
+import { ProfileDropdownMenu } from "./profile-dropdown";
 
 const Header = () => {
   const { session, signOut, loading } = useAuth();
