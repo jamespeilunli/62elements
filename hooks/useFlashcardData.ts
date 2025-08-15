@@ -1,6 +1,5 @@
-// hooks/useFlashcardData.ts
-
-import { fetchFilteredTable } from "../lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
@@ -20,6 +19,7 @@ export const useFlashcardData = () => {
   const searchParams = useSearchParams();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [status, setStatus] = useState<string>("Loading...");
+  const { user } = useAuth();
 
   useEffect(() => {
     const setIdStr = searchParams.get("set-id");
@@ -36,39 +36,58 @@ export const useFlashcardData = () => {
 
     const fetchData = async () => {
       try {
-        const setsResponse = await fetchFilteredTable("/api/get-sets", setId, "id");
-        if (setsResponse.status !== 200) {
-          setStatus(`Error ${setsResponse.status}: Could not fetch sets`);
+        const setResponse = await fetch(`/api/get-set?set-id=${setId}`);
+        if (!setResponse.ok) {
+          setStatus(`Error ${setResponse.status}: Could not fetch set`);
           return;
         }
-        const sets = setsResponse.data;
-        if (sets.length === 0) {
-          setStatus("Invalid flashcard set!");
-          return;
-        }
-        setStatus(`Studying ${sets[0].title}`);
+        const set = await setResponse.json();
+        setStatus(`Studying set ${set.title}`);
 
-        const cardsResponse = await fetchFilteredTable("/api/get-flashcards", setId, "set");
-        if (cardsResponse.status !== 200) {
+        let flashcardEndpoint;
+        if (user) {
+          // might want to move to backend eventually, but annoying because need user session
+          const { error } = await supabase.rpc("ensure_user_flashcards", {
+            p_set: setId,
+          });
+          if (error) {
+            setStatus(`Error ${error}`);
+            return;
+          }
+
+          flashcardEndpoint = `/api/get-user-flashcards?set-id=${setId}`;
+        } else {
+          flashcardEndpoint = `/api/get-flashcards?set-id=${setId}`;
+        }
+
+        const cardsResponse = await fetch(flashcardEndpoint);
+        if (!cardsResponse.ok) {
           setStatus(`Error ${cardsResponse.status}: Could not fetch cards`);
           return;
         }
-        const cards = cardsResponse.data;
-        if (cards.length === 0) {
+
+        const data = await cardsResponse.json();
+        if (!Array.isArray(data) || data.length === 0) {
           setStatus("No flashcards found!");
           return;
         }
 
-        const formattedCards = cards.map((card: Flashcard) => ({
-          ...card,
-          weight: 1,
-          lastAttempt: 0,
+        const formattedCards: Flashcard[] = data.map((card: any) => ({
+          id: card.id,
+          set: card.set,
+          term: card.term,
+          definition: card.definition,
+          weight: card.user_flashcards?.[0]?.weight ?? 1,
+          lastAttempt: card.user_flashcards?.[0]?.last_attempt
+            ? new Date(card.user_flashcards[0].last_attempt).getTime()
+            : 0,
         }));
+
         setFlashcards(formattedCards);
         localStorage.setItem("flashcards", JSON.stringify(formattedCards));
       } catch (error) {
-        setStatus("Failed to load data!");
         console.error(error);
+        setStatus(`Error ${error}, failed to load data!`);
       }
     };
 

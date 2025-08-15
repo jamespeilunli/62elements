@@ -10,18 +10,7 @@ export async function GET(request: NextRequest) {
   }
   const setId = parseInt(setIdStr);
 
-  const { data, error } = await supabase
-    .from("flashcards")
-    .select(
-      `
-      id,
-      set,
-      term,
-      definition
-      `,
-    )
-    .eq("set", setId)
-    .order("id", { ascending: true });
+  const { data, error } = await supabase.from("sets").select("*").eq("id", setId).single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

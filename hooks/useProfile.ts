@@ -25,7 +25,6 @@ export function useProfile() {
 
     const { data, error } = await supabase.from("profiles").select("*").single(); //.eq("id", user.id).single();
 
-    console.log(data);
     if (error) {
       console.error("Error fetching profile:", error);
       return null;

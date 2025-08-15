@@ -17,8 +17,12 @@ export async function GET(request: NextRequest) {
       id,
       set,
       term,
-      definition
-      `,
+      definition,
+      user_flashcards!left(
+        weight,
+        last_attempt
+      )
+    `,
     )
     .eq("set", setId)
     .order("id", { ascending: true });
