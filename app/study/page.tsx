@@ -4,7 +4,6 @@ import { useFlashcardData, Flashcard, weightToDifficulty } from "../../hooks/use
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { supabase } from "@/lib/supabaseClient";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, PenTool, Brain, /*Puzzle,*/ Star, Edit } from "lucide-react";
 import Link from "next/link";
