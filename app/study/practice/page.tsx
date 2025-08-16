@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { supabase } from "@/lib/supabaseClient";
 import { Check, X, Shuffle, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, Suspense, useState } from "react";
 
@@ -47,16 +48,18 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
     case "SUBMIT_ANSWER":
       const updatedFlashcards = [...state.flashcards];
       const currentCard = updatedFlashcards[state.currentCardIndex];
+      const newWeight = action.isCorrect
+        ? Math.min(currentCard.weight + 1, weightToDifficulty.length - 1)
+        : Math.max(currentCard.weight - 1, 0);
+      const newLastAttempt = state.totalAttempts + 1;
 
       updatedFlashcards[state.currentCardIndex] = {
         ...currentCard,
-        weight: action.isCorrect
-          ? Math.min(currentCard.weight + 1, weightToDifficulty.length - 1)
-          : Math.max(currentCard.weight - 1, 0),
-        lastAttempt: state.totalAttempts + 1,
+        weight: newWeight,
+        lastAttempt: newLastAttempt,
       };
 
-      console.log(updatedFlashcards[state.currentCardIndex]);
+      updateFlashcardProgress(currentCard.uid, newWeight, newLastAttempt);
 
       return {
         ...state,
@@ -366,6 +369,32 @@ function PracticePage() {
     </div>
   );
 }
+
+const updateFlashcardProgress = async (uid: number, weight: number, lastAttempt: number) => {
+  try {
+    const { data, error } = await supabase
+      .from("user_flashcards")
+      .update({
+        weight: weight,
+        last_attempt: lastAttempt,
+      })
+      .eq("flashcard_uid", uid)
+      .select();
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return;
+    }
+
+    if (data.length === 0) {
+      console.error("updateFlashcardProgress supabase response is empty, flashcard likely not updated");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Failed to update flashcard progress:", error);
+  }
+};
 
 const Page = () => (
   <Suspense fallback={<div>Loading...</div>}>
