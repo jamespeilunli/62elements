@@ -7,6 +7,7 @@ export type Difficulty = "New" | "Challenging" | "Familiar" | "Proficient";
 export const weightToDifficulty: Difficulty[] = ["Challenging", "New", "Familiar", "Proficient"];
 
 export type Flashcard = {
+  uid: number; // uid in the flashcards table
   id: number;
   set: number;
   term: string;
@@ -19,17 +20,17 @@ export const useFlashcardData = () => {
   const searchParams = useSearchParams();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [status, setStatus] = useState<string>("Loading...");
-  const { user } = useAuth();
 
   useEffect(() => {
-    const setIdStr = searchParams.get("set-id");
+    let setIdStr = searchParams.get("set-id");
+
     if (!setIdStr) {
-      if (typeof window !== "undefined" && localStorage.getItem("flashcards")) {
-        setFlashcards(JSON.parse(localStorage.getItem("flashcards")!));
+      if (typeof window !== "undefined" && localStorage.getItem("last-set")) {
+        setIdStr = localStorage.getItem("last-set")!;
       } else {
         setStatus("No set selected!");
+        return;
       }
-      return;
     }
 
     const setId = parseInt(setIdStr);
@@ -45,7 +46,7 @@ export const useFlashcardData = () => {
         setStatus(`Studying set ${set.title}`);
 
         let flashcardEndpoint;
-        if (user) {
+        try {
           // might want to move to backend eventually, but annoying because need user session
           const { error } = await supabase.rpc("ensure_user_flashcards", {
             p_set: setId,
@@ -56,7 +57,7 @@ export const useFlashcardData = () => {
           }
 
           flashcardEndpoint = `/api/get-user-flashcards?set-id=${setId}`;
-        } else {
+        } catch {
           flashcardEndpoint = `/api/get-flashcards?set-id=${setId}`;
         }
 
@@ -74,6 +75,7 @@ export const useFlashcardData = () => {
 
         const formattedCards: Flashcard[] = data.map((card: any) => ({
           id: card.id,
+          uid: card.uid,
           set: card.set,
           term: card.term,
           definition: card.definition,
@@ -84,7 +86,7 @@ export const useFlashcardData = () => {
         }));
 
         setFlashcards(formattedCards);
-        localStorage.setItem("flashcards", JSON.stringify(formattedCards));
+        localStorage.setItem("last-set", setIdStr);
       } catch (error) {
         console.error(error);
         setStatus(`Error ${error}, failed to load data!`);

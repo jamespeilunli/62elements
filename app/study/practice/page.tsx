@@ -56,6 +56,8 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         lastAttempt: state.totalAttempts + 1,
       };
 
+      console.log(updatedFlashcards[state.currentCardIndex]);
+
       return {
         ...state,
         flashcards: updatedFlashcards,

@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     .from("flashcards")
     .select(
       `
+      uid,
       id,
       set,
       term,
