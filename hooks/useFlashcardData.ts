@@ -45,19 +45,14 @@ export const useFlashcardData = () => {
         setStatus(`Studying set ${set.title}`);
 
         let flashcardEndpoint;
-        try {
-          // might want to move to backend eventually, but annoying because need user session
-          const { error } = await supabase.rpc("ensure_user_flashcards", {
-            p_set: setId,
-          });
-          if (error) {
-            setStatus(`Error ${error}`);
-            return;
-          }
-
-          flashcardEndpoint = `/api/get-user-flashcards?set-id=${setId}`;
-        } catch {
+        // might want to move to backend eventually, but annoying because need user session
+        const { error } = await supabase.rpc("ensure_user_flashcards", {
+          p_set: setId,
+        });
+        if (error) {
           flashcardEndpoint = `/api/get-flashcards?set-id=${setId}`;
+        } else {
+          flashcardEndpoint = `/api/get-user-flashcards?set-id=${setId}`;
         }
 
         const cardsResponse = await fetch(flashcardEndpoint);
