@@ -16,6 +16,5 @@ export const fetchFilteredTable = async (url: string, setId: number, filterKey: 
     }
   }
 
-  console.log(filteredData);
   return { data: filteredData, status: response.status };
 };

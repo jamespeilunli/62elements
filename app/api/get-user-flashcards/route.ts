@@ -14,11 +14,16 @@ export async function GET(request: NextRequest) {
     .from("flashcards")
     .select(
       `
+      uid,
       id,
       set,
       term,
-      definition
-      `,
+      definition,
+      user_flashcards!left(
+        weight,
+        last_attempt
+      )
+    `,
     )
     .eq("set", setId)
     .order("id", { ascending: true });
