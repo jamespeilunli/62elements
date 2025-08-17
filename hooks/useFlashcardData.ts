@@ -1,3 +1,4 @@
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -19,6 +20,7 @@ export const useFlashcardData = () => {
   const searchParams = useSearchParams();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [status, setStatus] = useState<string>("Loading...");
+  const { user } = useAuth();
 
   useEffect(() => {
     let setIdStr = searchParams.get("set-id");
@@ -37,47 +39,89 @@ export const useFlashcardData = () => {
     const fetchData = async () => {
       try {
         const setResponse = await fetch(`/api/get-set?set-id=${setId}`);
-        if (!setResponse.ok) {
-          setStatus(`Error ${setResponse.status}: Could not fetch set`);
-          return;
+
+        let set;
+        if (setResponse.ok) {
+          set = await setResponse.json();
+        } else {
+          if (!user) {
+            setStatus(`Error ${setResponse.status}: Could not fetch set`);
+            return;
+          }
+          const { data } = await supabase.from("sets").select("*").eq("id", setId).single();
+          console.log(data);
+          set = data;
         }
-        const set = await setResponse.json();
+
         setStatus(`Studying set ${set.title}`);
 
-        let flashcardEndpoint;
-        // might want to move to backend eventually, but annoying because need user session
+        // ensure user flashcards
         const { error } = await supabase.rpc("ensure_user_flashcards", {
           p_set: setId,
         });
+
+        let formattedCards: Flashcard[];
+
         if (error) {
-          flashcardEndpoint = `/api/get-flashcards?set-id=${setId}`;
+          // fall back to endpoint
+          const cardsResponse = await fetch(`/api/get-flashcards?set-id=${setId}`);
+          if (!cardsResponse.ok) {
+            setStatus(`Error ${cardsResponse.status}: Could not fetch cards`);
+            return;
+          }
+          const data = await cardsResponse.json();
+          if (!Array.isArray(data) || data.length === 0) {
+            setStatus("No flashcards found!");
+            return;
+          }
+          formattedCards = data.map((card: any) => ({
+            id: card.id,
+            uid: card.uid,
+            set: card.set,
+            term: card.term,
+            definition: card.definition,
+            weight: card.user_flashcards?.[0]?.weight ?? 1,
+            lastAttempt: card.user_flashcards?.[0]?.last_attempt
+              ? new Date(card.user_flashcards[0].last_attempt).getTime()
+              : 0,
+          }));
         } else {
-          flashcardEndpoint = `/api/get-user-flashcards?set-id=${setId}`;
-        }
+          // use the previously commented-out Supabase query
+          const { data, error: cardsError } = await supabase
+            .from("flashcards")
+            .select(
+              `
+          uid,
+          id,
+          set,
+          term,
+          definition,
+          user_flashcards!left(
+            weight,
+            last_attempt
+          )
+        `,
+            )
+            .eq("set", setId)
+            .order("id", { ascending: true });
 
-        const cardsResponse = await fetch(flashcardEndpoint);
-        if (!cardsResponse.ok) {
-          setStatus(`Error ${cardsResponse.status}: Could not fetch cards`);
-          return;
-        }
+          if (cardsError || !data || data.length === 0) {
+            setStatus("No flashcards found!");
+            return;
+          }
 
-        const data = await cardsResponse.json();
-        if (!Array.isArray(data) || data.length === 0) {
-          setStatus("No flashcards found!");
-          return;
+          formattedCards = data.map((card: any) => ({
+            id: card.id,
+            uid: card.uid,
+            set: card.set,
+            term: card.term,
+            definition: card.definition,
+            weight: card.user_flashcards?.[0]?.weight ?? 1,
+            lastAttempt: card.user_flashcards?.[0]?.last_attempt
+              ? new Date(card.user_flashcards[0].last_attempt).getTime()
+              : 0,
+          }));
         }
-
-        const formattedCards: Flashcard[] = data.map((card: any) => ({
-          id: card.id,
-          uid: card.uid,
-          set: card.set,
-          term: card.term,
-          definition: card.definition,
-          weight: card.user_flashcards?.[0]?.weight ?? 1,
-          lastAttempt: card.user_flashcards?.[0]?.last_attempt
-            ? new Date(card.user_flashcards[0].last_attempt).getTime()
-            : 0,
-        }));
 
         setFlashcards(formattedCards);
         localStorage.setItem("last-set", setIdStr);
@@ -88,7 +132,7 @@ export const useFlashcardData = () => {
     };
 
     fetchData();
-  }, [searchParams]);
+  }, [searchParams, user]);
 
   return { flashcards, status };
 };
