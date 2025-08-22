@@ -10,7 +10,7 @@ type FlashcardSet = {
   id: number;
   title: string;
   cards: number;
-  rating: number;
+  rating?: number;
   category: string;
 };
 
@@ -43,7 +43,7 @@ export default function PopularFlashcardSets() {
                 <p className="text-sm">{set.cards} cards</p>
                 <div className="flex items-center mt-2">
                   <Star className="h-4 w-4 fill-primary text-primary mr-1" />
-                  <span className="text-sm">{set.rating.toFixed(1)}</span>
+                  <span className="text-sm">{set.rating?.toFixed(1) ?? ""}</span>
                 </div>
               </CardContent>
               <CardFooter>
