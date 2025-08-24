@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useContext } from "react";
+import type { PostgrestError } from "@supabase/supabase-js";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
@@ -59,41 +60,40 @@ export default function CreateSetForm() {
       return;
     }
 
-    try {
-      // Insert the set
-      const { data: set, error: setError } = await supabase
-        .from("sets")
-        .insert({
-          title,
-          category,
-          is_public: isPublic,
-          user_id: user.id,
-        })
-        .select()
-        .single();
+    const { data: set, error: setErr } = await supabase
+      .from("sets")
+      .insert({ title, category, is_public: isPublic, user_id: user.id })
+      .select()
+      .single();
 
-      if (setError) throw setError;
-      if (!set) throw new Error("Failed to create set.");
-
-      // Insert the flashcards
-      const flashcardData = flashcards.map((card) => ({
-        set: set.id,
-        term: card.question,
-        definition: card.answer,
-        user_id: user.id,
-      }));
-
-      console.log(flashcardData);
-      const { error: flashcardsError } = await supabase.from("flashcards").insert(flashcardData);
-
-      if (flashcardsError) throw flashcardsError;
-
-      router.push(`/study?set_id=${set.id}`);
-    } catch (error: any) {
-      setError(error.message);
-    } finally {
+    if (setErr) {
+      setError((setErr as PostgrestError).message);
       setLoading(false);
+      return;
     }
+    if (!set) {
+      setError("Failed to create set.");
+      setLoading(false);
+      return;
+    }
+
+    const flashcardData = flashcards.map((c) => ({
+      set: set.id,
+      term: c.question,
+      definition: c.answer,
+      user_id: user.id,
+    }));
+
+    const { error: cardsErr } = await supabase.from("flashcards").insert(flashcardData);
+    if (cardsErr) {
+      setError((cardsErr as PostgrestError).message);
+      setLoading(false);
+      return;
+    }
+
+    router.push(`/study?set-id=${set.id}`);
+
+    setLoading(false);
   };
 
   return (
