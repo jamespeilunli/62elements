@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { getFlashcardsBySetId, getSetById } from "@/lib/data";
 import { supabase } from "@/lib/supabaseClient";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -38,19 +39,11 @@ export const useFlashcardData = () => {
 
     const fetchData = async () => {
       try {
-        const setResponse = await fetch(`/api/get-set?set-id=${setId}`);
+        const { data: set, error: setError } = await getSetById(setId);
 
-        let set;
-        if (setResponse.ok) {
-          set = await setResponse.json();
-        } else {
-          if (!user) {
-            setStatus(`Error ${setResponse.status}: Could not fetch set`);
-            return;
-          }
-          const { data } = await supabase.from("sets").select("*").eq("id", setId).single();
-          console.log(data);
-          set = data;
+        if (!set) {
+          setStatus(`Error ${setError}: Could not fetch set`);
+          return;
         }
 
         setStatus(`Studying set ${set.title}`);
@@ -64,17 +57,16 @@ export const useFlashcardData = () => {
 
         if (error) {
           // fall back to endpoint
-          const cardsResponse = await fetch(`/api/get-flashcards?set-id=${setId}`);
-          if (!cardsResponse.ok) {
-            setStatus(`Error ${cardsResponse.status}: Could not fetch cards`);
+          const { data: cardsResponse, error: cardsError } = await getFlashcardsBySetId(setId);
+          if (!cardsResponse) {
+            setStatus(`Error ${cardsError}: Could not fetch cards`);
             return;
           }
-          const data = await cardsResponse.json();
-          if (!Array.isArray(data) || data.length === 0) {
+          if (!Array.isArray(cardsResponse) || cardsResponse.length === 0) {
             setStatus("No flashcards found!");
             return;
           }
-          formattedCards = data.map((card: any) => ({
+          formattedCards = cardsResponse.map((card: any) => ({
             id: card.id,
             uid: card.uid,
             set: card.set,

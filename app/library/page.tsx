@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
+import { getVisibleSets } from "@/lib/data";
 import { supabase } from "@/lib/supabaseClient";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import Link from "next/link";
@@ -25,9 +26,9 @@ export default function PopularFlashcardSets() {
 
   useEffect(() => {
     const fetchVisibleData = async () => {
-      const res = await fetch("/api/get-visible-sets");
-      const data = await res.json();
-      setSets(data);
+      const { data, error } = await getVisibleSets();
+      if (error) console.error(error);
+      setSets(data ?? []);
     };
 
     fetchVisibleData();
