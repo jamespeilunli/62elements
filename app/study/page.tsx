@@ -122,7 +122,7 @@ const FlashcardTable = (props: FlashcardProps) => {
       ? flashcards
       : flashcards.filter((card) =>
           activeFilter === "Starred"
-            ? starredCards.includes(card.id)
+            ? starredCards.includes(card.uid)
             : weightToDifficulty[card.weight] === activeFilter,
         );
 
@@ -157,7 +157,7 @@ const FlashcardTable = (props: FlashcardProps) => {
         </TableHeader>
         <TableBody>
           {filteredCards.map((card) => (
-            <TableRow key={card.id}>
+            <TableRow key={card.uid}>
               <TableCell>{card.term}</TableCell>
               <TableCell>{card.definition}</TableCell>
               <TableCell>{weightToDifficulty[card.weight]}</TableCell>
@@ -166,10 +166,10 @@ const FlashcardTable = (props: FlashcardProps) => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => toggleStar(card.id)}
-                    aria-label={starredCards.includes(card.id) ? "Unstar" : "Star"}
+                    onClick={() => toggleStar(card.uid)}
+                    aria-label={starredCards.includes(card.uid) ? "Unstar" : "Star"}
                   >
-                    <Star className={`h-4 w-4 ${starredCards.includes(card.id) ? "fill-yellow-400" : ""}`} />
+                    <Star className={`h-4 w-4 ${starredCards.includes(card.uid) ? "fill-yellow-400" : ""}`} />
                   </Button>
                   <Button
                     variant="ghost"
