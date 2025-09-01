@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
+import Papa from "papaparse";
+import { Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function CreateSetForm() {
   const [title, setTitle] = useState("");
@@ -35,6 +38,27 @@ export default function CreateSetForm() {
     const newFlashcards = [...flashcards];
     newFlashcards[index][field] = value;
     setFlashcards(newFlashcards);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const parsedData = results.data as {
+            term: string;
+            definition: string;
+          }[];
+          const newFlashcards = parsedData.map((row) => ({
+            question: row.term,
+            answer: row.definition,
+          }));
+          setFlashcards(newFlashcards);
+        },
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,7 +101,8 @@ export default function CreateSetForm() {
       return;
     }
 
-    const flashcardData = flashcards.map((c) => ({
+    const flashcardData = flashcards.map((c, i) => ({
+      id: i,
       set: set.id,
       term: c.question,
       definition: c.answer,
@@ -131,7 +156,27 @@ export default function CreateSetForm() {
 
           <div>
             <h3 className="text-lg font-medium mb-2">Flashcards</h3>
-            <div className="space-y-4">
+            <div className="space-y-2 mb-8 mt-4">
+              <div className="flex items-center">
+                <Label htmlFor="csv-upload">Import from CSV</Label>
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="ml-2">
+                        <Info className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        Your CSV file must contain two columns: <strong>term</strong> and <strong>definition</strong>.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Input id="csv-upload" type="file" accept=".csv" onChange={handleFileChange} />
+            </div>
+            <div className="space-y-4 mt-4">
               {flashcards.map((card, index) => (
                 <div key={index} className="p-4 border rounded-md space-y-2 relative">
                   <Label className="absolute -top-3 left-2 bg-background px-1 text-sm text-muted-foreground">
