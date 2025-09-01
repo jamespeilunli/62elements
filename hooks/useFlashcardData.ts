@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { getSetById } from "@/lib/data";
+import { getSetById, getUserFlashcards } from "@/lib/data";
 import { supabase } from "@/lib/supabaseClient";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -52,30 +52,14 @@ export const useFlashcardData = () => {
           });
         }
 
-        const { data, error: cardsError } = await supabase
-          .from("flashcards")
-          .select(
-            `
-            uid,
-            id,
-            set,
-            term,
-            definition,
-            user_flashcards!left(
-              weight,
-              last_attempt
-            )
-          `,
-          )
-          .eq("set", setId)
-          .order("id", { ascending: true });
+        const { data: flashcards, error: cardsError } = await getUserFlashcards(setId);
 
-        if (cardsError || !data || data.length === 0) {
+        if (cardsError || !flashcards || flashcards.length === 0) {
           setStatus("No flashcards found!");
           return;
         }
 
-        const formattedCards: Flashcard[] = data.map((card: any) => ({
+        const formattedCards: Flashcard[] = flashcards.map((card: any) => ({
           id: card.id,
           uid: card.uid,
           set: card.set,
