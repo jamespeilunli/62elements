@@ -9,7 +9,6 @@ export const weightToDifficulty: Difficulty[] = ["Challenging", "New", "Familiar
 
 export type Flashcard = {
   uid: number; // uid in the flashcards table
-  id: number;
   set: number;
   term: string;
   definition: string;
@@ -60,7 +59,6 @@ export const useFlashcardData = () => {
         }
 
         const formattedCards: Flashcard[] = flashcards.map((card: any) => ({
-          id: card.id,
           uid: card.uid,
           set: card.set,
           term: card.term,

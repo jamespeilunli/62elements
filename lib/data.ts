@@ -6,14 +6,13 @@ export async function getFlashcardsBySetId(setId: number) {
     .select(
       `
       uid,
-      id,
       set,
       term,
       definition
       `,
     )
     .eq("set", setId)
-    .order("id", { ascending: true });
+    .order("uid", { ascending: true });
 
   return { data, error };
 }
@@ -30,7 +29,6 @@ export async function getUserFlashcards(setId: number) {
     .select(
       `
       uid,
-      id,
       set,
       term,
       definition,
@@ -41,7 +39,7 @@ export async function getUserFlashcards(setId: number) {
     `,
     )
     .eq("set", setId)
-    .order("id", { ascending: true });
+    .order("uid", { ascending: true });
 
   return { data, error };
 }
