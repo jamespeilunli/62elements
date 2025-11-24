@@ -1,4 +1,4 @@
-import { Flashcard, weightToDifficulty } from "../hooks/useFlashcardData";
+import { Flashcard } from "../hooks/useFlashcardData";
 
 export interface Algorithm {
   nextQuestion(flashcards: Flashcard[], currentIndex: number, totalAttempts: number): number;
@@ -23,6 +23,18 @@ function getCardStats(card: Flashcard) {
     mastery,
     difficulty: 1 - confidence,
   };
+}
+
+export function getDifficultyString(card: Flashcard): string {
+  if (card.totalAttempts === 0) {
+    return "New";
+  }
+
+  const stats = getCardStats(card);
+
+  if (stats.confidence >= 0.9) return "Proficient";
+  if (stats.confidence >= 0.7) return "Familiar";
+  return "Challenging";
 }
 
 export class SpacedRepetitionAlgorithm implements Algorithm {

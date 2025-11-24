@@ -4,9 +4,6 @@ import { supabase } from "@/lib/supabaseClient";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
-export type Difficulty = "New" | "Challenging" | "Familiar" | "Proficient";
-export const weightToDifficulty: Difficulty[] = ["Challenging", "New", "Familiar", "Proficient"];
-
 export interface Flashcard {
   uid: number;
   term: string;
@@ -59,19 +56,22 @@ export const useFlashcardData = () => {
           return;
         }
 
-        const formattedCards: Flashcard[] = flashcards.map((card: any) => ({
-          uid: card.uid,
-          set: card.set,
-          term: card.term,
-          definition: card.definition,
-          weight: card.user_flashcards?.[0]?.weight ?? 1,
-          lastAttempt: card.user_flashcards?.[0]?.last_attempt
-            ? new Date(card.user_flashcards[0].last_attempt).getTime()
-            : 0,
-          totalAttempts: card.user_flashcards?.[0]?.total_attempts ?? 0,
-          unsureAttempts: card.user_flashcards?.[0]?.unsure_attempts ?? 0,
-          missedAttempts: card.user_flashcards?.[0]?.missed_attempts ?? 0,
-        }));
+        const formattedCards: Flashcard[] = flashcards.map((card: any) => {
+          console.log(card.user_flashcards?.[0]);
+          return {
+            uid: card.uid,
+            set: card.set,
+            term: card.term,
+            definition: card.definition,
+            weight: card.user_flashcards?.[0]?.weight ?? 1,
+            lastAttempt: card.user_flashcards?.[0]?.last_attempt
+              ? new Date(card.user_flashcards[0].last_attempt).getTime()
+              : 0,
+            totalAttempts: card.user_flashcards?.[0]?.total_attempts ?? 0,
+            unsureAttempts: card.user_flashcards?.[0]?.unsure_attempts ?? 0,
+            missedAttempts: card.user_flashcards?.[0]?.missed_attempts ?? 0,
+          };
+        });
 
         setFlashcards(formattedCards);
         localStorage.setItem("last-set", setIdStr);
