@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/lib/supabaseClient";
 import { Check, X, Shuffle, RotateCcw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useReducer, Suspense, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, Suspense, useState, useRef } from "react";
 
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
@@ -231,6 +231,8 @@ function PracticePage() {
 
   const currentCard = state.flashcards[state.currentCardIndex];
 
+  const hasInitialized = useRef(false);
+
   const shuffleCards = useCallback(() => {
     const shuffled = [...flashcards].sort(() => Math.random() - 0.5);
     dispatch({ type: "SHUFFLE_CARDS", cards: shuffled });
@@ -239,7 +241,10 @@ function PracticePage() {
   }, [flashcards, algorithm]);
 
   useEffect(() => {
-    if (flashcards.length > 0) shuffleCards();
+    if (flashcards.length > 0 && !hasInitialized.current) {
+      shuffleCards();
+      hasInitialized.current = true;
+    }
   }, [flashcards, shuffleCards]);
 
   const { question, correctAnswer } = useMemo(() => {
