@@ -1,5 +1,5 @@
 "use client";
-
+import { Algorithm, SpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
 import { Flashcard, weightToDifficulty, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +37,8 @@ type PracticeAction =
   | { type: "PREPARE_QUESTION" }
   | { type: "MARK_CORRECT" };
 
+const algorithm: Algorithm = new SpacedRepetitionAlgorithm();
+
 function practiceReducer(state: PracticeState, action: PracticeAction): PracticeState {
   switch (action.type) {
     case "SHUFFLE_CARDS":
@@ -71,18 +73,7 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         userAnswer: action.userAnswer,
       };
     case "NEXT_QUESTION": {
-      const nextCardIndex = state.flashcards.reduce(
-        (bestCard, card, index) => {
-          const difficultyFactor = weightToDifficulty.length - card.weight;
-          const recencyFactor = (state.totalAttempts - (card.lastAttempt || 0)) / state.flashcards.length;
-          const randomFactor = Math.random();
-
-          const priority = difficultyFactor + recencyFactor + 0.1 * randomFactor;
-          return priority > bestCard.priority ? { index, priority } : bestCard;
-        },
-        { index: 0, priority: -Infinity },
-      ).index;
-
+      const nextCardIndex = algorithm.nextQuestion(state.flashcards, state.currentCardIndex, state.totalAttempts);
       return { ...state, currentCardIndex: nextCardIndex };
     }
     case "PREPARE_QUESTION": {
