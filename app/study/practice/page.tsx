@@ -1,4 +1,5 @@
 "use client";
+
 import { Algorithm, ChunkedSpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
 import { Flashcard, weightToDifficulty, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { Button } from "@/components/ui/button";
@@ -33,11 +34,10 @@ type PracticeAction =
   | { type: "SET_QUIZ_MODE"; quizMode: QuizMode }
   | { type: "SET_ANSWER_TYPE"; answerType: AnswerType }
   | { type: "SUBMIT_ANSWER"; isCorrect: boolean; userAnswer: string }
-  | { type: "NEXT_QUESTION" }
+  | { type: "NEXT_QUESTION"; algorithm: Algorithm }
   | { type: "PREPARE_QUESTION" }
-  | { type: "MARK_CORRECT" };
-
-const algorithm: Algorithm = new ChunkedSpacedRepetitionAlgorithm();
+  | { type: "MARK_CORRECT" }
+  | { type: "MARK_UNSURE" };
 
 function practiceReducer(state: PracticeState, action: PracticeAction): PracticeState {
   switch (action.type) {
@@ -50,18 +50,15 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
     case "SUBMIT_ANSWER":
       const updatedFlashcards = [...state.flashcards];
       const currentCard = updatedFlashcards[state.currentCardIndex];
-      const newWeight = action.isCorrect
-        ? Math.min(currentCard.weight + 1, weightToDifficulty.length - 1)
-        : Math.max(currentCard.weight - 1, 0);
-      const newLastAttempt = state.totalAttempts + 1;
 
       updatedFlashcards[state.currentCardIndex] = {
         ...currentCard,
-        weight: newWeight,
-        lastAttempt: newLastAttempt,
+        totalAttempts: currentCard.totalAttempts + 1,
+        missedAttempts: action.isCorrect ? currentCard.missedAttempts : currentCard.missedAttempts + 1,
+        lastAttempt: state.totalAttempts + 1,
       };
 
-      updateFlashcardProgress(currentCard.uid, newWeight, newLastAttempt);
+      updateFlashcardProgress(currentCard.uid, updatedFlashcards[state.currentCardIndex]);
 
       return {
         ...state,
@@ -73,7 +70,12 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         userAnswer: action.userAnswer,
       };
     case "NEXT_QUESTION": {
-      const nextCardIndex = algorithm.nextQuestion(state.flashcards, state.currentCardIndex, state.totalAttempts);
+      const nextCardIndex = action.algorithm.nextQuestion(
+        state.flashcards,
+        state.currentCardIndex,
+        state.totalAttempts,
+      );
+
       return { ...state, currentCardIndex: nextCardIndex };
     }
     case "PREPARE_QUESTION": {
@@ -90,8 +92,41 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         isCorrect: false,
       };
     }
-    case "MARK_CORRECT":
-      return { ...state, score: state.score + 1 };
+    case "MARK_CORRECT": {
+      const correctedFlashcards = [...state.flashcards];
+      const correctedCard = correctedFlashcards[state.currentCardIndex];
+
+      correctedFlashcards[state.currentCardIndex] = {
+        ...correctedCard,
+        missedAttempts: Math.max(0, correctedCard.missedAttempts - 1),
+      };
+
+      updateFlashcardProgress(correctedCard.uid, correctedFlashcards[state.currentCardIndex]);
+
+      return {
+        ...state,
+        flashcards: correctedFlashcards,
+        score: state.score + 1,
+      };
+    }
+    case "MARK_UNSURE": {
+      const correctedFlashcards = [...state.flashcards];
+      const correctedCard = correctedFlashcards[state.currentCardIndex];
+
+      correctedFlashcards[state.currentCardIndex] = {
+        ...correctedCard,
+        unsureAttempts: Math.max(0, correctedCard.unsureAttempts + 1),
+        missedAttempts: Math.max(0, correctedCard.missedAttempts - 1),
+      };
+
+      updateFlashcardProgress(correctedCard.uid, correctedFlashcards[state.currentCardIndex]);
+
+      return {
+        ...state,
+        flashcards: correctedFlashcards,
+        score: state.score + 1,
+      };
+    }
     default:
       return state;
   }
@@ -191,14 +226,17 @@ function QuizControls({
 function PracticePage() {
   const { flashcards, status } = useFlashcardData();
   const [state, dispatch] = useReducer(practiceReducer, initialState);
+
+  const algorithm = useMemo(() => new ChunkedSpacedRepetitionAlgorithm(), []);
+
   const currentCard = state.flashcards[state.currentCardIndex];
 
   const shuffleCards = useCallback(() => {
     const shuffled = [...flashcards].sort(() => Math.random() - 0.5);
     dispatch({ type: "SHUFFLE_CARDS", cards: shuffled });
-    dispatch({ type: "NEXT_QUESTION" });
+    dispatch({ type: "NEXT_QUESTION", algorithm });
     dispatch({ type: "PREPARE_QUESTION" });
-  }, [flashcards]);
+  }, [flashcards, algorithm]);
 
   useEffect(() => {
     if (flashcards.length > 0) shuffleCards();
@@ -245,9 +283,9 @@ function PracticePage() {
   );
 
   const nextQuestion = useCallback(() => {
-    dispatch({ type: "NEXT_QUESTION" });
+    dispatch({ type: "NEXT_QUESTION", algorithm });
     dispatch({ type: "PREPARE_QUESTION" });
-  }, []);
+  }, [algorithm]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -265,10 +303,9 @@ function PracticePage() {
         }
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [state.showAnswer, state.isShortAnswerQuestion, state.userAnswer, options, handleAnswer, nextQuestion]);
+  }, [state.showAnswer, state.isShortAnswerQuestion, options, handleAnswer, nextQuestion]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -281,11 +318,9 @@ function PracticePage() {
             dispatch={dispatch}
             shuffleCards={shuffleCards}
           />
-
           <Card className="mb-6">
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold mb-4">{question}</h2>
-
               {!state.showAnswer && !state.isShortAnswerQuestion && (
                 <RadioGroup onValueChange={handleAnswer}>
                   <div className="space-y-3">
@@ -306,9 +341,7 @@ function PracticePage() {
                   </div>
                 </RadioGroup>
               )}
-
               {!state.showAnswer && state.isShortAnswerQuestion && <AnswerInput handleAnswer={handleAnswer} />}
-
               {state.showAnswer && (
                 <div className="mt-4">
                   <p className="font-semibold">
@@ -334,15 +367,27 @@ function PracticePage() {
                         nextQuestion();
                       }}
                       className="ml-4"
+                      variant="outline"
                     >
                       I Was Right
+                    </Button>
+                  )}
+
+                  {state.isCorrect && (
+                    <Button
+                      onClick={() => {
+                        dispatch({ type: "MARK_UNSURE" });
+                        nextQuestion();
+                      }}
+                      className="ml-4"
+                    >
+                      I Was Unsure
                     </Button>
                   )}
                 </div>
               )}
             </CardContent>
           </Card>
-
           <div className="mb-6">
             <h3 className="text-lg font-semibold mb-2">Progress</h3>
             <Progress value={(state.score / state.totalAttempts) * 100 || 0} className="w-full" />
@@ -350,7 +395,6 @@ function PracticePage() {
               Score: {state.score} / {state.totalAttempts}
             </p>
           </div>
-
           <Button onClick={() => window.location.reload()} variant="outline">
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset Practice Session
@@ -361,13 +405,15 @@ function PracticePage() {
   );
 }
 
-const updateFlashcardProgress = async (uid: number, weight: number, lastAttempt: number) => {
+const updateFlashcardProgress = async (uid: number, card: Flashcard) => {
   try {
     const { data, error } = await supabase
       .from("user_flashcards")
       .update({
-        weight: weight,
-        last_attempt: lastAttempt,
+        total_attempts: card.totalAttempts,
+        missed_attempts: card.missedAttempts,
+        unsure_attempts: card.unsureAttempts,
+        last_attempt: card.lastAttempt,
       })
       .eq("flashcard_uid", uid)
       .select();
