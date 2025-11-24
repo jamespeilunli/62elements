@@ -101,7 +101,7 @@ export default function CreateSetForm() {
       return;
     }
 
-    const flashcardData = flashcards.map((c, _) => ({
+    const flashcardData = flashcards.map((c) => ({
       set: set.id,
       term: c.question,
       definition: c.answer,
