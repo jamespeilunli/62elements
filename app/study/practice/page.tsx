@@ -1,5 +1,5 @@
 "use client";
-import { Algorithm, ChunkedSpacedRepetitionAlgorithm, SpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
+import { Algorithm, ChunkedSpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
 import { Flashcard, weightToDifficulty, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
