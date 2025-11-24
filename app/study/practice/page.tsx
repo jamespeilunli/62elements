@@ -1,5 +1,5 @@
 "use client";
-import { Algorithm, SpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
+import { Algorithm, ChunkedSpacedRepetitionAlgorithm, SpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
 import { Flashcard, weightToDifficulty, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,7 +37,7 @@ type PracticeAction =
   | { type: "PREPARE_QUESTION" }
   | { type: "MARK_CORRECT" };
 
-const algorithm: Algorithm = new SpacedRepetitionAlgorithm();
+const algorithm: Algorithm = new ChunkedSpacedRepetitionAlgorithm();
 
 function practiceReducer(state: PracticeState, action: PracticeAction): PracticeState {
   switch (action.type) {

@@ -43,7 +43,7 @@ export const useFlashcardData = () => {
           return;
         }
 
-        setStatus(`Studying set ${set.title}`);
+        setStatus(`Studying ${set.title}`);
 
         if (user) {
           await supabase.rpc("ensure_user_flashcards", {
