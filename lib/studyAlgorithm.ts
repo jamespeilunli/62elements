@@ -35,6 +35,7 @@ export function getDifficultyString(card: Flashcard): string {
 
 export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
   private chunkIndex: number = 0;
+  private inReview: boolean = false;
 
   constructor(
     private chunkSize: number = 7,
@@ -44,15 +45,15 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
   nextQuestion(flashcards: Flashcard[], currentIndex: number, totalAttempts: number): number {
     const start = this.chunkIndex * this.chunkSize; // Calculate start position
     const end = Math.min(start + this.chunkSize, flashcards.length);
-    const chunk = flashcards.slice(start, end);
+    const chunk = this.inReview ? this.findReviewCards(flashcards) : flashcards.slice(start, end);
 
     if (!this.chunkHasUnlearnedWords(chunk)) {
       this.chunkIndex = this.findNewChunkIndex(flashcards);
+      this.inReview = !this.inReview;
     }
 
-    const chunkRelativeIndex = this.nextQuestionFromChunk(chunk, totalAttempts);
-    const absoluteIndex = start + chunkRelativeIndex;
-    return absoluteIndex;
+    const selectedId = this.nextQuestionFromChunk(chunk, totalAttempts);
+    return flashcards.findIndex((card) => card.uid === selectedId);
   }
 
   private findReviewCards(flashcards: Flashcard[]): Flashcard[] {
@@ -81,16 +82,17 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
 
   private nextQuestionFromChunk(chunk: Flashcard[], totalAttempts: number): number {
     return chunk.reduce(
-      (bestCard, card, index) => {
+      (bestCard, card) => {
         const stats = getCardStats(card);
+        const id = card.uid;
         const difficultyFactor = stats.difficulty;
         const recencyFactor = (totalAttempts - (card.lastAttempt || 0)) / chunk.length;
         const randomFactor = Math.random() * 0.1;
         const priority = difficultyFactor + recencyFactor + randomFactor;
 
-        return priority > bestCard.priority ? { index, priority } : bestCard;
+        return priority > bestCard.priority ? { id, priority } : bestCard;
       },
-      { index: 0, priority: -Infinity },
-    ).index;
+      { id: 0, priority: -Infinity },
+    ).id;
   }
 }
