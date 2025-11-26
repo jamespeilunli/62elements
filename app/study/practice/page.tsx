@@ -234,7 +234,11 @@ function PracticePage() {
   const hasInitialized = useRef(false);
 
   const shuffleCards = useCallback(() => {
-    const shuffled = [...flashcards].sort(() => Math.random() - 0.5);
+    // shuffle: https://stackoverflow.com/a/46545530
+    const shuffled = [...flashcards]
+      .map((value) => ({ value, sort: Math.random() }))
+      .sort((a, b) => a.sort - b.sort)
+      .map(({ value }) => value);
     dispatch({ type: "SHUFFLE_CARDS", cards: shuffled });
     dispatch({ type: "NEXT_QUESTION", algorithm });
     dispatch({ type: "PREPARE_QUESTION" });
