@@ -33,8 +33,10 @@ export async function getUserFlashcards(setId: number) {
       term,
       definition,
       user_flashcards!left(
-        weight,
-        last_attempt
+        last_attempt,
+        total_attempts,
+        missed_attempts,
+        unsure_attempts
       )
     `,
     )

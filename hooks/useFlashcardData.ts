@@ -4,17 +4,15 @@ import { supabase } from "@/lib/supabaseClient";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
-export type Difficulty = "New" | "Challenging" | "Familiar" | "Proficient";
-export const weightToDifficulty: Difficulty[] = ["Challenging", "New", "Familiar", "Proficient"];
-
-export type Flashcard = {
-  uid: number; // uid in the flashcards table
-  set: number;
+export interface Flashcard {
+  uid: number;
   term: string;
   definition: string;
-  weight: number;
+  totalAttempts: number;
+  missedAttempts: number;
+  unsureAttempts: number;
   lastAttempt: number;
-};
+}
 
 export const useFlashcardData = () => {
   const searchParams = useSearchParams();
@@ -43,7 +41,7 @@ export const useFlashcardData = () => {
           return;
         }
 
-        setStatus(`Studying set ${set.title}`);
+        setStatus(`Studying ${set.title}`);
 
         if (user) {
           await supabase.rpc("ensure_user_flashcards", {
@@ -67,6 +65,9 @@ export const useFlashcardData = () => {
           lastAttempt: card.user_flashcards?.[0]?.last_attempt
             ? new Date(card.user_flashcards[0].last_attempt).getTime()
             : 0,
+          totalAttempts: card.user_flashcards?.[0]?.total_attempts ?? 0,
+          unsureAttempts: card.user_flashcards?.[0]?.unsure_attempts ?? 0,
+          missedAttempts: card.user_flashcards?.[0]?.missed_attempts ?? 0,
         }));
 
         setFlashcards(formattedCards);
