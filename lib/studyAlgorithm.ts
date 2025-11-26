@@ -43,6 +43,8 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
   ) {}
 
   nextQuestion(flashcards: Flashcard[], currentIndex: number, totalAttempts: number): number {
+    this.chunkSize = Math.min(this.chunkSize, flashcards.length);
+
     const start = this.chunkIndex * this.chunkSize; // Calculate start position
     const end = Math.min(start + this.chunkSize, flashcards.length);
     const chunk = this.inReview ? this.findReviewCards(flashcards) : flashcards.slice(start, end);
