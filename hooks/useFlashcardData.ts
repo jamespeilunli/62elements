@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { getSetById, getUserFlashcards } from "@/lib/data";
+import { getFlashcardAttemptsBySetId, getFlashcardsBySetId, getSetById } from "@/lib/data";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
@@ -8,9 +8,9 @@ export type FlashcardAttemptResult = "correct" | "incorrect" | "unsure";
 export interface FlashcardAttempt {
   id: number;
   flashcardUid: number;
-  attempted_at: string;
+  attemptedAt: string;
   result: FlashcardAttemptResult;
-  response_ms: number;
+  responseMs: number;
 }
 
 export interface Flashcard {
@@ -53,48 +53,48 @@ export const useFlashcardData = () => {
     }
 
     const fetchData = async () => {
+      setStatus("Loading...");
       try {
-        const { data: set, error: setError } = await getSetById(setId);
-        if (!set) {
+        const { data: setData, error: setError } = await getSetById(setId);
+        if (!setData || setError) {
           setStatus(`Error ${setError}: Could not fetch set`);
           return;
         }
 
-        setSet(set as FlashcardSet);
+        setSet(setData as FlashcardSet);
 
-        const { data: flashcards, error: cardsError } = await getUserFlashcards(setId);
+        const [{ data: flashcards, error: cardsError }, { data: attempts, error: attemptsError }] = await Promise.all([
+          getFlashcardsBySetId(setId),
+          getFlashcardAttemptsBySetId(setId),
+        ]);
 
         if (cardsError || !flashcards || flashcards.length === 0) {
           setStatus("No flashcards found!");
           return;
         }
 
-        const allAttempts: FlashcardAttempt[] = [];
+        if (attemptsError) {
+          console.error("Failed to fetch flashcard attempts:", attemptsError);
+        }
 
-        const formattedCards: Flashcard[] = flashcards.map((card: any) => {
-          const attempts = Array.isArray(card.flashcard_attempts)
-            ? [...card.flashcard_attempts]
-                .map((attempt) => ({
-                  id: attempt.id,
-                  flashcardUid: attempt.flashcard_uid ?? card.uid,
-                  attempted_at: attempt.attempted_at,
-                  result: attempt.result,
-                  response_ms: attempt.response_ms ?? 0,
-                }))
-                .sort((a, b) => new Date(a.attempted_at).getTime() - new Date(b.attempted_at).getTime())
-            : [];
+        const formattedCards: Flashcard[] = flashcards.map((card: any) => ({
+          uid: card.uid,
+          term: card.term,
+          definition: card.definition,
+        }));
 
-          allAttempts.push(...attempts);
-
-          return {
-            uid: card.uid,
-            term: card.term,
-            definition: card.definition,
-          };
-        });
+        const formattedAttempts: FlashcardAttempt[] =
+          attempts?.map((attempt: any) => ({
+            id: attempt.id,
+            flashcardUid: attempt.flashcard_uid,
+            attemptedAt: attempt.attempted_at,
+            result: attempt.result,
+            responseMs: attempt.response_ms ?? 0,
+          })) ?? [];
 
         setFlashcards(formattedCards);
-        setFlashcardAttempts(allAttempts);
+        setFlashcardAttempts(formattedAttempts);
+        setStatus("");
         localStorage.setItem("last-set", setIdStr);
       } catch (error) {
         console.error(error);

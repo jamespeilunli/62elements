@@ -386,8 +386,8 @@ function PracticePage() {
         id: -Date.now(),
         flashcardUid: currentCard.uid,
         result,
-        attempted_at: new Date().toISOString(),
-        response_ms: 0,
+        attemptedAt: new Date().toISOString(),
+        responseMs: 0,
       };
 
       dispatch({

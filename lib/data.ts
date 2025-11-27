@@ -23,27 +23,12 @@ export async function getSetById(setId: number) {
   return { data, error };
 }
 
-export async function getUserFlashcards(setId: number) {
+export async function getFlashcardAttemptsBySetId(setId: number) {
   const { data, error } = await supabase
-    .from("flashcards")
-    .select(
-      `
-      uid,
-      set,
-      term,
-      definition,
-      flashcard_attempts(
-        id,
-        flashcard_uid,
-        attempted_at,
-        result,
-        response_ms
-      )
-    `,
-    )
-    .eq("set", setId)
-    .order("uid", { ascending: true })
-    .order("attempted_at", { foreignTable: "flashcard_attempts", ascending: true });
+    .from("flashcard_attempts")
+    .select("id, flashcard_uid, attempted_at, result, response_ms")
+    .eq("set_id", setId)
+    .order("attempted_at", { ascending: true });
 
   return { data, error };
 }
