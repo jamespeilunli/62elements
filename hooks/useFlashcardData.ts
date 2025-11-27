@@ -1,13 +1,22 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { getSetById, getUserFlashcards } from "@/lib/data";
-import { supabase } from "@/lib/supabaseClient";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
+
+export type FlashcardAttemptResult = "correct" | "incorrect" | "unsure";
+
+export interface FlashcardAttempt {
+  id: number;
+  attempted_at: string;
+  result: FlashcardAttemptResult;
+  response_ms: number;
+}
 
 export interface Flashcard {
   uid: number;
   term: string;
   definition: string;
+  attempts: FlashcardAttempt[];
   totalAttempts: number;
   missedAttempts: number;
   unsureAttempts: number;
@@ -20,6 +29,20 @@ export interface FlashcardSet {
   category?: string | null;
   is_public?: boolean;
   user_id?: string;
+}
+
+export function summarizeFlashcardAttempts(attempts: FlashcardAttempt[]) {
+  const missedAttempts = attempts.filter((attempt) => attempt.result === "incorrect").length;
+  const unsureAttempts = attempts.filter((attempt) => attempt.result === "unsure").length;
+  const totalAttempts = attempts.length;
+  const lastAttempt = totalAttempts;
+
+  return {
+    missedAttempts,
+    unsureAttempts,
+    totalAttempts,
+    lastAttempt,
+  };
 }
 
 export const useFlashcardData = () => {
@@ -56,12 +79,6 @@ export const useFlashcardData = () => {
 
         setSet(set as FlashcardSet);
 
-        if (user) {
-          await supabase.rpc("ensure_user_flashcards", {
-            p_set: setId,
-          });
-        }
-
         const { data: flashcards, error: cardsError } = await getUserFlashcards(setId);
 
         if (cardsError || !flashcards || flashcards.length === 0) {
@@ -69,19 +86,23 @@ export const useFlashcardData = () => {
           return;
         }
 
-        const formattedCards: Flashcard[] = flashcards.map((card: any) => ({
-          uid: card.uid,
-          set: card.set,
-          term: card.term,
-          definition: card.definition,
-          weight: card.user_flashcards?.[0]?.weight ?? 1,
-          lastAttempt: card.user_flashcards?.[0]?.last_attempt
-            ? new Date(card.user_flashcards[0].last_attempt).getTime()
-            : 0,
-          totalAttempts: card.user_flashcards?.[0]?.total_attempts ?? 0,
-          unsureAttempts: card.user_flashcards?.[0]?.unsure_attempts ?? 0,
-          missedAttempts: card.user_flashcards?.[0]?.missed_attempts ?? 0,
-        }));
+        const formattedCards: Flashcard[] = flashcards.map((card: any) => {
+          const attempts = Array.isArray(card.flashcard_attempts)
+            ? [...card.flashcard_attempts].sort(
+                (a, b) => new Date(a.attempted_at).getTime() - new Date(b.attempted_at).getTime(),
+              )
+            : [];
+
+          const stats = summarizeFlashcardAttempts(attempts);
+
+          return {
+            uid: card.uid,
+            term: card.term,
+            definition: card.definition,
+            attempts,
+            ...stats,
+          };
+        });
 
         setFlashcards(formattedCards);
         localStorage.setItem("last-set", setIdStr);

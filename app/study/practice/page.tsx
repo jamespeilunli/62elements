@@ -9,7 +9,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import BackLink from "@/components/back-link";
 import { useAuth } from "@/contexts/AuthContext";
 import { Algorithm, ChunkedSpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
-import { Flashcard, useFlashcardData } from "../../../hooks/useFlashcardData";
+import {
+  Flashcard,
+  FlashcardAttempt,
+  FlashcardAttemptResult,
+  summarizeFlashcardAttempts,
+  useFlashcardData,
+} from "../../../hooks/useFlashcardData";
 import { supabase } from "@/lib/supabaseClient";
 import { Check, Settings, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, Suspense, useState, useRef } from "react";
@@ -37,11 +43,11 @@ type PracticeAction =
   | { type: "SHUFFLE_CARDS"; cards: Flashcard[] }
   | { type: "SET_QUIZ_MODE"; quizMode: QuizMode }
   | { type: "SET_ANSWER_TYPE"; answerType: AnswerType }
-  | { type: "SUBMIT_ANSWER"; isCorrect: boolean; userAnswer: string }
+  | { type: "SUBMIT_ANSWER"; isCorrect: boolean; userAnswer: string; attempt: FlashcardAttempt }
   | { type: "NEXT_QUESTION"; algorithm: Algorithm }
   | { type: "PREPARE_QUESTION" }
-  | { type: "MARK_CORRECT" }
-  | { type: "MARK_UNSURE" };
+  | { type: "MARK_CORRECT"; attemptId: number }
+  | { type: "MARK_UNSURE"; attemptId: number };
 
 function practiceReducer(state: PracticeState, action: PracticeAction): PracticeState {
   switch (action.type) {
@@ -51,18 +57,17 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
       return { ...state, quizMode: action.quizMode };
     case "SET_ANSWER_TYPE":
       return { ...state, answerType: action.answerType };
-    case "SUBMIT_ANSWER":
+    case "SUBMIT_ANSWER": {
       const updatedFlashcards = [...state.flashcards];
       const currentCard = updatedFlashcards[state.currentCardIndex];
+      const attempts = [...currentCard.attempts, action.attempt];
+      const stats = summarizeFlashcardAttempts(attempts);
 
       updatedFlashcards[state.currentCardIndex] = {
         ...currentCard,
-        totalAttempts: currentCard.totalAttempts + 1,
-        missedAttempts: action.isCorrect ? currentCard.missedAttempts : currentCard.missedAttempts + 1,
-        lastAttempt: state.totalAttempts + 1,
+        attempts,
+        ...stats,
       };
-
-      updateFlashcardProgress(currentCard.uid, updatedFlashcards[state.currentCardIndex]);
 
       return {
         ...state,
@@ -73,6 +78,7 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         isCorrect: action.isCorrect,
         userAnswer: action.userAnswer,
       };
+    }
     case "NEXT_QUESTION": {
       const nextCardIndex = action.algorithm.nextQuestion(
         state.flashcards,
@@ -99,13 +105,19 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
     case "MARK_CORRECT": {
       const correctedFlashcards = [...state.flashcards];
       const correctedCard = correctedFlashcards[state.currentCardIndex];
+      const updatedAttempts = [...correctedCard.attempts];
+      const attemptIndex = updatedAttempts.findIndex((attempt) => attempt.id === action.attemptId);
+
+      if (attemptIndex === -1) return state;
+
+      updatedAttempts[attemptIndex] = { ...updatedAttempts[attemptIndex], result: "correct" };
+      const stats = summarizeFlashcardAttempts(updatedAttempts);
 
       correctedFlashcards[state.currentCardIndex] = {
         ...correctedCard,
-        missedAttempts: Math.max(0, correctedCard.missedAttempts - 1),
+        attempts: updatedAttempts,
+        ...stats,
       };
-
-      updateFlashcardProgress(correctedCard.uid, correctedFlashcards[state.currentCardIndex]);
 
       return {
         ...state,
@@ -116,14 +128,19 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
     case "MARK_UNSURE": {
       const correctedFlashcards = [...state.flashcards];
       const correctedCard = correctedFlashcards[state.currentCardIndex];
+      const updatedAttempts = [...correctedCard.attempts];
+      const attemptIndex = updatedAttempts.findIndex((attempt) => attempt.id === action.attemptId);
+
+      if (attemptIndex === -1) return state;
+
+      updatedAttempts[attemptIndex] = { ...updatedAttempts[attemptIndex], result: "unsure" };
+      const stats = summarizeFlashcardAttempts(updatedAttempts);
 
       correctedFlashcards[state.currentCardIndex] = {
         ...correctedCard,
-        unsureAttempts: Math.max(0, correctedCard.unsureAttempts + 1),
-        missedAttempts: Math.max(0, correctedCard.missedAttempts - 1),
+        attempts: updatedAttempts,
+        ...stats,
       };
-
-      updateFlashcardProgress(correctedCard.uid, correctedFlashcards[state.currentCardIndex]);
 
       return {
         ...state,
@@ -150,13 +167,13 @@ const initialState: PracticeState = {
   isCorrect: false,
 };
 
-function AnswerInput({ handleAnswer }: { handleAnswer: (value: string) => void }) {
+function AnswerInput({ handleAnswer }: { handleAnswer: (value: string) => Promise<void> | void }) {
   const [userAnswer, setUserAnswer] = useState("");
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        handleAnswer(userAnswer);
+        void handleAnswer(userAnswer);
       }}
     >
       <Input
@@ -382,15 +399,30 @@ function PracticePage() {
   );
 
   const handleAnswer = useCallback(
-    (answer: string) => {
+    async (answer: string) => {
+      const userId = user?.id;
+      if (!currentCard || setId === null || !userId) return;
+
       const isCorrect = validateAnswer(answer);
+      const result: FlashcardAttemptResult = isCorrect ? "correct" : "incorrect";
+
+      const attempt = await recordFlashcardAttempt({
+        flashcardUid: currentCard.uid,
+        setId,
+        result,
+        userId,
+      });
+
+      if (!attempt) return;
+
       dispatch({
         type: "SUBMIT_ANSWER",
         isCorrect,
         userAnswer: answer,
+        attempt,
       });
     },
-    [validateAnswer],
+    [currentCard, dispatch, setId, user?.id, validateAnswer],
   );
 
   const nextQuestion = useCallback(() => {
@@ -409,7 +441,7 @@ function PracticePage() {
         if (["1", "2", "3", "4"].includes(event.key)) {
           const index = parseInt(event.key) - 1;
           if (options[index]) {
-            handleAnswer(options[index]);
+            void handleAnswer(options[index]);
           }
         }
       }
@@ -472,7 +504,11 @@ function PracticePage() {
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold mb-4">{question}</h2>
               {!state.showAnswer && !state.isShortAnswerQuestion && (
-                <RadioGroup onValueChange={handleAnswer}>
+                <RadioGroup
+                  onValueChange={(value) => {
+                    void handleAnswer(value);
+                  }}
+                >
                   <div className="space-y-3">
                     {options.map((option, index) => (
                       <div key={index} className="flex items-center space-x-3">
@@ -513,8 +549,14 @@ function PracticePage() {
                   {!state.isCorrect && (
                     <Button
                       onClick={() => {
-                        dispatch({ type: "MARK_CORRECT" });
-                        nextQuestion();
+                        const lastAttempt = currentCard?.attempts[currentCard.attempts.length - 1];
+                        if (lastAttempt) {
+                          dispatch({ type: "MARK_CORRECT", attemptId: lastAttempt.id });
+                          if (lastAttempt.id > 0) {
+                            void updateFlashcardAttemptResult(lastAttempt.id, "correct");
+                          }
+                          nextQuestion();
+                        }
                       }}
                       className="ml-4"
                       variant="outline"
@@ -526,8 +568,14 @@ function PracticePage() {
                   {state.isCorrect && (
                     <Button
                       onClick={() => {
-                        dispatch({ type: "MARK_UNSURE" });
-                        nextQuestion();
+                        const lastAttempt = currentCard?.attempts[currentCard.attempts.length - 1];
+                        if (lastAttempt) {
+                          dispatch({ type: "MARK_UNSURE", attemptId: lastAttempt.id });
+                          if (lastAttempt.id > 0) {
+                            void updateFlashcardAttemptResult(lastAttempt.id, "unsure");
+                          }
+                          nextQuestion();
+                        }
                       }}
                       className="ml-4"
                     >
@@ -559,33 +607,50 @@ function PracticePage() {
   );
 }
 
-const updateFlashcardProgress = async (uid: number, card: Flashcard) => {
-  try {
-    const { data, error } = await supabase
-      .from("user_flashcards")
-      .update({
-        total_attempts: card.totalAttempts,
-        missed_attempts: card.missedAttempts,
-        unsure_attempts: card.unsureAttempts,
-        last_attempt: card.lastAttempt,
-      })
-      .eq("flashcard_uid", uid)
-      .select();
+async function recordFlashcardAttempt({
+  flashcardUid,
+  setId,
+  result,
+  userId,
+  responseMs = 0,
+}: {
+  flashcardUid: number;
+  setId: number;
+  result: FlashcardAttemptResult;
+  userId?: string | null;
+  responseMs?: number;
+}): Promise<FlashcardAttempt | null> {
+  if (!userId) return null;
 
-    if (error) {
-      console.error("Supabase error:", error);
-      return;
-    }
+  const { data, error } = await supabase
+    .from("flashcard_attempts")
+    .insert({
+      user_id: userId,
+      set_id: setId,
+      flashcard_uid: flashcardUid,
+      result,
+      response_ms: responseMs,
+    })
+    .select("id, attempted_at, result, response_ms")
+    .single();
 
-    if (data.length === 0) {
-      console.error("updateFlashcardProgress supabase response is empty, flashcard likely not updated");
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Failed to update flashcard progress:", error);
+  if (error) {
+    console.error("Failed to record flashcard attempt:", error);
+    return null;
   }
-};
+
+  return data as FlashcardAttempt;
+}
+
+async function updateFlashcardAttemptResult(attemptId: number, result: FlashcardAttemptResult) {
+  if (attemptId <= 0) return;
+
+  const { error } = await supabase.from("flashcard_attempts").update({ result }).eq("id", attemptId);
+
+  if (error) {
+    console.error("Failed to update flashcard attempt result:", error);
+  }
+}
 
 const Page = () => (
   <Suspense fallback={<div>Loading...</div>}>

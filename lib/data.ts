@@ -32,16 +32,17 @@ export async function getUserFlashcards(setId: number) {
       set,
       term,
       definition,
-      user_flashcards!left(
-        last_attempt,
-        total_attempts,
-        missed_attempts,
-        unsure_attempts
+      flashcard_attempts(
+        id,
+        attempted_at,
+        result,
+        response_ms
       )
     `,
     )
     .eq("set", setId)
-    .order("uid", { ascending: true });
+    .order("uid", { ascending: true })
+    .order("attempted_at", { foreignTable: "flashcard_attempts", ascending: true });
 
   return { data, error };
 }

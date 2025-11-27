@@ -5,15 +5,21 @@ export interface Algorithm {
 }
 
 function getCardStats(card: Flashcard) {
-  if (card.totalAttempts === 0) {
+  const attempts = card.attempts ?? [];
+  const totalAttempts = attempts.length || card.totalAttempts;
+  const missedAttempts =
+    attempts.filter((attempt) => attempt.result === "incorrect").length || card.missedAttempts;
+  const unsureAttempts = attempts.filter((attempt) => attempt.result === "unsure").length || card.unsureAttempts;
+
+  if (totalAttempts === 0) {
     return { difficulty: 1, confidence: 0 };
   }
 
-  const correctAttempts = card.totalAttempts - card.missedAttempts - card.unsureAttempts;
+  const correctAttempts = totalAttempts - missedAttempts - unsureAttempts;
 
-  const confidence = (correctAttempts + card.unsureAttempts * 0.5) / card.totalAttempts;
+  const confidence = (correctAttempts + unsureAttempts * 0.5) / totalAttempts;
 
-  const difficulty = card.missedAttempts + card.unsureAttempts * 0.5 - correctAttempts;
+  const difficulty = missedAttempts + unsureAttempts * 0.5 - correctAttempts;
 
   return {
     confidence,
@@ -21,8 +27,13 @@ function getCardStats(card: Flashcard) {
   };
 }
 
+function getTotalAttempts(card: Flashcard) {
+  return (card.attempts?.length ?? 0) || card.totalAttempts;
+}
+
 export function getDifficultyString(card: Flashcard): string {
-  if (card.totalAttempts === 0) {
+  const attempts = card.attempts ?? [];
+  if ((attempts.length || card.totalAttempts) === 0) {
     return "New";
   }
 
@@ -59,7 +70,7 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
   }
 
   private findReviewCards(flashcards: Flashcard[]): Flashcard[] {
-    return flashcards.filter((card) => card.totalAttempts > 0);
+    return flashcards.filter((card) => getTotalAttempts(card) > 0);
   }
 
   private findNewChunkIndex(flashcards: Flashcard[]): number {
@@ -78,7 +89,7 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
   private chunkHasUnlearnedWords(chunk: Flashcard[]): boolean {
     return chunk.some((card) => {
       const stats = getCardStats(card);
-      return stats.difficulty >= 0 || card.totalAttempts < 2;
+      return stats.difficulty >= 0 || getTotalAttempts(card) < 2;
     });
   }
 
