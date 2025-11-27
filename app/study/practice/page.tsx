@@ -118,7 +118,6 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
       return {
         ...state,
         flashcardAttempts: updatedAttempts,
-        score: state.score + 1,
       };
     }
     default:
