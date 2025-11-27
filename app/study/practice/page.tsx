@@ -259,6 +259,7 @@ function PracticePage() {
   const { status, flashcards, set } = useFlashcardData();
   const { user } = useAuth();
   const [state, dispatch] = useReducer(practiceReducer, initialState);
+  const setId = set?.id ?? null;
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [draftSettings, setDraftSettings] = useState<PracticeSettings>({
@@ -272,7 +273,10 @@ function PracticePage() {
 
   const hasInitialized = useRef(false);
   const hasLoadedPreferences = useRef(false);
-  const preferenceStorageKey = useMemo(() => (set?.id ? `practice-preferences-${set.id}` : null), [set?.id]);
+  const preferenceStorageKey = useMemo(
+    () => (setId !== null ? `practice-preferences-${setId}` : null),
+    [setId],
+  );
 
   const shuffleCards = useCallback(() => {
     // shuffle: https://stackoverflow.com/a/46545530
@@ -297,12 +301,12 @@ function PracticePage() {
   }, []);
 
   useEffect(() => {
-    if (!set?.id || hasLoadedPreferences.current) return;
+    if (setId === null || hasLoadedPreferences.current) return;
 
     const loadPreferences = async () => {
       let applied = false;
       if (user) {
-        const { data, error } = await getUserSetPreferences(set.id);
+        const { data, error } = await getUserSetPreferences(setId);
         if (error) {
           console.error("Failed to fetch preferences", error);
         }
@@ -334,7 +338,7 @@ function PracticePage() {
     };
 
     loadPreferences();
-  }, [applyPreferences, preferenceStorageKey, set?.id, user]);
+  }, [applyPreferences, preferenceStorageKey, setId, user]);
 
   useEffect(() => {
     if (!preferenceStorageKey) return;
@@ -415,7 +419,7 @@ function PracticePage() {
   }, [state.showAnswer, state.isShortAnswerQuestion, options, handleAnswer, nextQuestion]);
 
   const savePreferences = useCallback(async () => {
-    if (!set?.id) {
+    if (setId === null) {
       setIsSettingsOpen(false);
       return;
     }
@@ -426,7 +430,7 @@ function PracticePage() {
     if (user) {
       try {
         await upsertUserSetPreferences({
-          setId: set.id,
+          setId,
           quizMode: draftSettings.quizMode,
           answerType: draftSettings.answerType,
           userId: user.id,
@@ -438,7 +442,7 @@ function PracticePage() {
 
     setIsSavingPreferences(false);
     setIsSettingsOpen(false);
-  }, [applyPreferences, draftSettings, set?.id, user]);
+  }, [applyPreferences, draftSettings, setId, user]);
 
   useEffect(() => {
     if (isSettingsOpen) {
