@@ -18,6 +18,7 @@ export const useFlashcardData = () => {
   const searchParams = useSearchParams();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [status, setStatus] = useState<string>("Loading...");
+  const [setTitle, setSetTitle] = useState<string>("Empty Title");
   const { user } = useAuth();
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export const useFlashcardData = () => {
           return;
         }
 
-        setStatus(`Studying ${set.title}`);
+        setSetTitle(set.title);
 
         if (user) {
           await supabase.rpc("ensure_user_flashcards", {
@@ -81,5 +82,5 @@ export const useFlashcardData = () => {
     fetchData();
   }, [searchParams, user]);
 
-  return { flashcards, status };
+  return { flashcards, status, setTitle };
 };

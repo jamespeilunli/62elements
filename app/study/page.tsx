@@ -191,7 +191,7 @@ const FlashcardTable = (props: FlashcardProps) => {
 };
 
 const StudySet = () => {
-  const { flashcards, status } = useFlashcardData();
+  const { flashcards, status, setTitle } = useFlashcardData();
 
   const [isGlowing, setIsGlowing] = useState(true);
 
@@ -202,7 +202,7 @@ const StudySet = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">{status}</h1>
+      <h1 className="text-3xl font-bold mb-6">{flashcards.length != 0 ? `Studying ${setTitle}` : status}</h1>
 
       {flashcards.length != 0 && (
         <div>

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/lib/supabaseClient";
-import { Check, X, Shuffle, RotateCcw } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, Suspense, useState, useRef } from "react";
 
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
@@ -170,12 +170,10 @@ function QuizControls({
   quizMode,
   answerType,
   dispatch,
-  shuffleCards,
 }: {
   quizMode: QuizMode;
   answerType: AnswerType;
   dispatch: React.Dispatch<PracticeAction>;
-  shuffleCards: () => void;
 }) {
   return (
     <div className="mb-6 flex flex-wrap gap-4 items-center justify-between">
@@ -215,10 +213,6 @@ function QuizControls({
           <option value="both">Both</option>
         </select>
       </div>
-      <Button onClick={shuffleCards} variant="outline">
-        <Shuffle className="h-4 w-4 mr-2" />
-        Shuffle Cards
-      </Button>
     </div>
   );
 }
@@ -321,12 +315,7 @@ function PracticePage() {
       <h1 className="text-3xl font-bold mb-6">{currentCard ? "Practice Mode" : status}</h1>
       {currentCard && (
         <div>
-          <QuizControls
-            quizMode={state.quizMode}
-            answerType={state.answerType}
-            dispatch={dispatch}
-            shuffleCards={shuffleCards}
-          />
+          <QuizControls quizMode={state.quizMode} answerType={state.answerType} dispatch={dispatch} />
           <Card className="mb-6">
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold mb-4">{question}</h2>
@@ -404,10 +393,6 @@ function PracticePage() {
               Score: {state.score} / {state.totalAttempts}
             </p>
           </div>
-          <Button onClick={() => window.location.reload()} variant="outline">
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Reset Practice Session
-          </Button>
         </div>
       )}
     </div>
