@@ -1,6 +1,6 @@
 "use client";
 
-import { useFlashcardData, Flashcard } from "../../hooks/useFlashcardData";
+import { useFlashcardData, Flashcard, FlashcardAttempt } from "../../hooks/useFlashcardData";
 import { getDifficultyString } from "../../lib/studyAlgorithm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starr
 
 type FlashcardProps = {
   flashcards: Flashcard[];
+  flashcardAttempts: FlashcardAttempt[];
 };
 
 const FlashcardsDisplay = (props: FlashcardProps) => {
@@ -112,6 +113,7 @@ const FlashcardsDisplay = (props: FlashcardProps) => {
 
 const FlashcardTable = (props: FlashcardProps) => {
   const flashcards = props.flashcards;
+  const { flashcardAttempts } = props;
   const [starredCards, setStarredCards] = useState<number[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
   const toggleStar = (id: number) => {
@@ -122,7 +124,9 @@ const FlashcardTable = (props: FlashcardProps) => {
     activeFilter === "All"
       ? flashcards
       : flashcards.filter((card) =>
-          activeFilter === "Starred" ? starredCards.includes(card.uid) : getDifficultyString(card) === activeFilter,
+          activeFilter === "Starred"
+            ? starredCards.includes(card.uid)
+            : getDifficultyString(card, flashcardAttempts) === activeFilter,
         );
 
   return (
@@ -159,7 +163,7 @@ const FlashcardTable = (props: FlashcardProps) => {
             <TableRow key={card.uid}>
               <TableCell>{card.term}</TableCell>
               <TableCell>{card.definition}</TableCell>
-              <TableCell>{getDifficultyString(card)}</TableCell>
+              <TableCell>{getDifficultyString(card, flashcardAttempts)}</TableCell>
               <TableCell>
                 <div className="flex space-x-2">
                   <Button
@@ -191,7 +195,7 @@ const FlashcardTable = (props: FlashcardProps) => {
 };
 
 const StudySet = () => {
-  const { flashcards, status, set } = useFlashcardData();
+  const { flashcards, flashcardAttempts, status, set } = useFlashcardData();
 
   const [isGlowing, setIsGlowing] = useState(true);
 
@@ -206,7 +210,7 @@ const StudySet = () => {
 
       {flashcards.length != 0 && (
         <div>
-          <FlashcardsDisplay flashcards={flashcards} />
+          <FlashcardsDisplay flashcards={flashcards} flashcardAttempts={flashcardAttempts} />
 
           <div className="flex flex-wrap justify-center gap-2 mb-8">
             <Button key="[COMING SOON]" variant="outline" asChild>
@@ -231,7 +235,7 @@ const StudySet = () => {
             </Button>
           </div>
 
-          <FlashcardTable flashcards={flashcards} />
+          <FlashcardTable flashcards={flashcards} flashcardAttempts={flashcardAttempts} />
         </div>
       )}
     </div>

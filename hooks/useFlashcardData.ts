@@ -7,6 +7,7 @@ export type FlashcardAttemptResult = "correct" | "incorrect" | "unsure";
 
 export interface FlashcardAttempt {
   id: number;
+  flashcardUid: number;
   attempted_at: string;
   result: FlashcardAttemptResult;
   response_ms: number;
@@ -16,11 +17,6 @@ export interface Flashcard {
   uid: number;
   term: string;
   definition: string;
-  attempts: FlashcardAttempt[];
-  totalAttempts: number;
-  missedAttempts: number;
-  unsureAttempts: number;
-  lastAttempt: number;
 }
 
 export interface FlashcardSet {
@@ -31,23 +27,10 @@ export interface FlashcardSet {
   user_id?: string;
 }
 
-export function summarizeFlashcardAttempts(attempts: FlashcardAttempt[]) {
-  const missedAttempts = attempts.filter((attempt) => attempt.result === "incorrect").length;
-  const unsureAttempts = attempts.filter((attempt) => attempt.result === "unsure").length;
-  const totalAttempts = attempts.length;
-  const lastAttempt = totalAttempts;
-
-  return {
-    missedAttempts,
-    unsureAttempts,
-    totalAttempts,
-    lastAttempt,
-  };
-}
-
 export const useFlashcardData = () => {
   const searchParams = useSearchParams();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [flashcardAttempts, setFlashcardAttempts] = useState<FlashcardAttempt[]>([]);
   const [status, setStatus] = useState<string>("Loading...");
   const [set, setSet] = useState<FlashcardSet | null>(null);
   const { user } = useAuth();
@@ -86,25 +69,32 @@ export const useFlashcardData = () => {
           return;
         }
 
+        const allAttempts: FlashcardAttempt[] = [];
+
         const formattedCards: Flashcard[] = flashcards.map((card: any) => {
           const attempts = Array.isArray(card.flashcard_attempts)
-            ? [...card.flashcard_attempts].sort(
-                (a, b) => new Date(a.attempted_at).getTime() - new Date(b.attempted_at).getTime(),
-              )
+            ? [...card.flashcard_attempts]
+                .map((attempt) => ({
+                  id: attempt.id,
+                  flashcardUid: attempt.flashcard_uid ?? card.uid,
+                  attempted_at: attempt.attempted_at,
+                  result: attempt.result,
+                  response_ms: attempt.response_ms ?? 0,
+                }))
+                .sort((a, b) => new Date(a.attempted_at).getTime() - new Date(b.attempted_at).getTime())
             : [];
 
-          const stats = summarizeFlashcardAttempts(attempts);
+          allAttempts.push(...attempts);
 
           return {
             uid: card.uid,
             term: card.term,
             definition: card.definition,
-            attempts,
-            ...stats,
           };
         });
 
         setFlashcards(formattedCards);
+        setFlashcardAttempts(allAttempts);
         localStorage.setItem("last-set", setIdStr);
       } catch (error) {
         console.error(error);
@@ -115,5 +105,5 @@ export const useFlashcardData = () => {
     fetchData();
   }, [searchParams, user]);
 
-  return { status, flashcards, set };
+  return { status, flashcards, flashcardAttempts, set };
 };

@@ -9,13 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import BackLink from "@/components/back-link";
 import { useAuth } from "@/contexts/AuthContext";
 import { Algorithm, ChunkedSpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
-import {
-  Flashcard,
-  FlashcardAttempt,
-  FlashcardAttemptResult,
-  summarizeFlashcardAttempts,
-  useFlashcardData,
-} from "../../../hooks/useFlashcardData";
+import { Flashcard, FlashcardAttempt, FlashcardAttemptResult, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { supabase } from "@/lib/supabaseClient";
 import { Check, Settings, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, Suspense, useState, useRef } from "react";
@@ -27,6 +21,7 @@ type PracticeSettings = { quizMode: QuizMode; answerType: AnswerType };
 
 interface PracticeState {
   flashcards: Flashcard[];
+  flashcardAttempts: FlashcardAttempt[];
   currentCardIndex: number;
   quizMode: QuizMode;
   answerType: AnswerType;
@@ -41,6 +36,7 @@ interface PracticeState {
 
 type PracticeAction =
   | { type: "SHUFFLE_CARDS"; cards: Flashcard[] }
+  | { type: "SET_FLASHCARD_ATTEMPTS"; attempts: FlashcardAttempt[] }
   | { type: "SET_QUIZ_MODE"; quizMode: QuizMode }
   | { type: "SET_ANSWER_TYPE"; answerType: AnswerType }
   | { type: "SUBMIT_ANSWER"; isCorrect: boolean; userAnswer: string; attempt: FlashcardAttempt }
@@ -53,25 +49,19 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
   switch (action.type) {
     case "SHUFFLE_CARDS":
       return { ...state, flashcards: action.cards };
+    case "SET_FLASHCARD_ATTEMPTS": {
+      return { ...state, flashcardAttempts: action.attempts };
+    }
     case "SET_QUIZ_MODE":
       return { ...state, quizMode: action.quizMode };
     case "SET_ANSWER_TYPE":
       return { ...state, answerType: action.answerType };
     case "SUBMIT_ANSWER": {
-      const updatedFlashcards = [...state.flashcards];
-      const currentCard = updatedFlashcards[state.currentCardIndex];
-      const attempts = [...currentCard.attempts, action.attempt];
-      const stats = summarizeFlashcardAttempts(attempts);
-
-      updatedFlashcards[state.currentCardIndex] = {
-        ...currentCard,
-        attempts,
-        ...stats,
-      };
+      const flashcardAttempts = [...state.flashcardAttempts, action.attempt];
 
       return {
         ...state,
-        flashcards: updatedFlashcards,
+        flashcardAttempts,
         showAnswer: true,
         totalAttempts: state.totalAttempts + 1,
         score: action.isCorrect ? state.score + 1 : state.score,
@@ -82,8 +72,9 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
     case "NEXT_QUESTION": {
       const nextCardIndex = action.algorithm.nextQuestion(
         state.flashcards,
+        state.flashcardAttempts,
         state.currentCardIndex,
-        state.totalAttempts,
+        state.flashcardAttempts.length,
       );
 
       return { ...state, currentCardIndex: nextCardIndex };
@@ -103,48 +94,30 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
       };
     }
     case "MARK_CORRECT": {
-      const correctedFlashcards = [...state.flashcards];
-      const correctedCard = correctedFlashcards[state.currentCardIndex];
-      const updatedAttempts = [...correctedCard.attempts];
-      const attemptIndex = updatedAttempts.findIndex((attempt) => attempt.id === action.attemptId);
+      const attemptIndex = state.flashcardAttempts.findIndex((attempt) => attempt.id === action.attemptId);
 
       if (attemptIndex === -1) return state;
 
+      const updatedAttempts = [...state.flashcardAttempts];
       updatedAttempts[attemptIndex] = { ...updatedAttempts[attemptIndex], result: "correct" };
-      const stats = summarizeFlashcardAttempts(updatedAttempts);
-
-      correctedFlashcards[state.currentCardIndex] = {
-        ...correctedCard,
-        attempts: updatedAttempts,
-        ...stats,
-      };
 
       return {
         ...state,
-        flashcards: correctedFlashcards,
+        flashcardAttempts: updatedAttempts,
         score: state.score + 1,
       };
     }
     case "MARK_UNSURE": {
-      const correctedFlashcards = [...state.flashcards];
-      const correctedCard = correctedFlashcards[state.currentCardIndex];
-      const updatedAttempts = [...correctedCard.attempts];
-      const attemptIndex = updatedAttempts.findIndex((attempt) => attempt.id === action.attemptId);
+      const attemptIndex = state.flashcardAttempts.findIndex((attempt) => attempt.id === action.attemptId);
 
       if (attemptIndex === -1) return state;
 
+      const updatedAttempts = [...state.flashcardAttempts];
       updatedAttempts[attemptIndex] = { ...updatedAttempts[attemptIndex], result: "unsure" };
-      const stats = summarizeFlashcardAttempts(updatedAttempts);
-
-      correctedFlashcards[state.currentCardIndex] = {
-        ...correctedCard,
-        attempts: updatedAttempts,
-        ...stats,
-      };
 
       return {
         ...state,
-        flashcards: correctedFlashcards,
+        flashcardAttempts: updatedAttempts,
         score: state.score + 1,
       };
     }
@@ -155,6 +128,7 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
 
 const initialState: PracticeState = {
   flashcards: [],
+  flashcardAttempts: [],
   currentCardIndex: 0,
   quizMode: "both",
   answerType: "short-answer",
@@ -270,7 +244,7 @@ function SettingsModal({
 }
 
 function PracticePage() {
-  const { status, flashcards, set } = useFlashcardData();
+  const { status, flashcards, flashcardAttempts, set } = useFlashcardData();
   const { user } = useAuth();
   const [state, dispatch] = useReducer(practiceReducer, initialState);
   const setId = set?.id ?? null;
@@ -284,6 +258,10 @@ function PracticePage() {
   const algorithm = useMemo(() => new ChunkedSpacedRepetitionAlgorithm(), []);
 
   const currentCard = state.flashcards[state.currentCardIndex];
+  const currentCardAttempts = useMemo(() => {
+    if (!currentCard) return [];
+    return state.flashcardAttempts.filter((attempt) => attempt.flashcardUid === currentCard.uid);
+  }, [currentCard, state.flashcardAttempts]);
 
   const hasInitialized = useRef(false);
   const hasLoadedPreferences = useRef(false);
@@ -310,6 +288,10 @@ function PracticePage() {
   const updateDraftSettings = useCallback((update: Partial<PracticeSettings>) => {
     setDraftSettings((prev) => ({ ...prev, ...update }));
   }, []);
+
+  useEffect(() => {
+    dispatch({ type: "SET_FLASHCARD_ATTEMPTS", attempts: flashcardAttempts });
+  }, [flashcardAttempts]);
 
   useEffect(() => {
     if (setId === null || hasLoadedPreferences.current) return;
@@ -402,6 +384,7 @@ function PracticePage() {
 
       const localAttempt: FlashcardAttempt = {
         id: -Date.now(),
+        flashcardUid: currentCard.uid,
         result,
         attempted_at: new Date().toISOString(),
         response_ms: 0,
@@ -549,7 +532,7 @@ function PracticePage() {
                   {!state.isCorrect && (
                     <Button
                       onClick={() => {
-                        const lastAttempt = currentCard?.attempts[currentCard.attempts.length - 1];
+                        const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
                         if (lastAttempt) {
                           dispatch({ type: "MARK_CORRECT", attemptId: lastAttempt.id });
                           if (lastAttempt.id > 0) {
@@ -568,7 +551,7 @@ function PracticePage() {
                   {state.isCorrect && (
                     <Button
                       onClick={() => {
-                        const lastAttempt = currentCard?.attempts[currentCard.attempts.length - 1];
+                        const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
                         if (lastAttempt) {
                           dispatch({ type: "MARK_UNSURE", attemptId: lastAttempt.id });
                           if (lastAttempt.id > 0) {

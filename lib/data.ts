@@ -34,6 +34,7 @@ export async function getUserFlashcards(setId: number) {
       definition,
       flashcard_attempts(
         id,
+        flashcard_uid,
         attempted_at,
         result,
         response_ms
