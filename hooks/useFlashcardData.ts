@@ -14,11 +14,19 @@ export interface Flashcard {
   lastAttempt: number;
 }
 
+export interface FlashcardSet {
+  id: number;
+  title: string;
+  category?: string | null;
+  is_public?: boolean;
+  user_id?: string;
+}
+
 export const useFlashcardData = () => {
   const searchParams = useSearchParams();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [status, setStatus] = useState<string>("Loading...");
-  const [setTitle, setSetTitle] = useState<string>("Empty Title");
+  const [set, setSet] = useState<FlashcardSet | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -33,6 +41,10 @@ export const useFlashcardData = () => {
     }
 
     const setId = parseInt(setIdStr);
+    if (Number.isNaN(setId)) {
+      setStatus("Invalid set id");
+      return;
+    }
 
     const fetchData = async () => {
       try {
@@ -42,7 +54,7 @@ export const useFlashcardData = () => {
           return;
         }
 
-        setSetTitle(set.title);
+        setSet(set as FlashcardSet);
 
         if (user) {
           await supabase.rpc("ensure_user_flashcards", {
@@ -82,5 +94,5 @@ export const useFlashcardData = () => {
     fetchData();
   }, [searchParams, user]);
 
-  return { flashcards, status, setTitle };
+  return { status, flashcards, set };
 };
