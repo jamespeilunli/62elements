@@ -173,7 +173,7 @@ function AnswerInput({ handleAnswer }: { handleAnswer: (value: string) => Promis
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        void handleAnswer(userAnswer);
+        handleAnswer(userAnswer);
       }}
     >
       <Input
@@ -254,10 +254,7 @@ function SettingsModal({
               <h2 className="text-xl font-semibold">Practice Settings</h2>
             </div>
           </div>
-          <QuizControls
-            settings={settings}
-            onChange={onChange}
-          />
+          <QuizControls settings={settings} onChange={onChange} />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={onClose} disabled={saving}>
               Cancel
@@ -290,10 +287,7 @@ function PracticePage() {
 
   const hasInitialized = useRef(false);
   const hasLoadedPreferences = useRef(false);
-  const preferenceStorageKey = useMemo(
-    () => (setId !== null ? `practice-preferences-${setId}` : null),
-    [setId],
-  );
+  const preferenceStorageKey = useMemo(() => (setId !== null ? `practice-preferences-${setId}` : null), [setId]);
 
   const shuffleCards = useCallback(() => {
     // shuffle: https://stackoverflow.com/a/46545530
@@ -399,30 +393,36 @@ function PracticePage() {
   );
 
   const handleAnswer = useCallback(
-    async (answer: string) => {
+    (answer: string) => {
       const userId = user?.id;
       if (!currentCard || setId === null || !userId) return;
 
       const isCorrect = validateAnswer(answer);
       const result: FlashcardAttemptResult = isCorrect ? "correct" : "incorrect";
 
-      const attempt = await recordFlashcardAttempt({
-        flashcardUid: currentCard.uid,
-        setId,
+      const localAttempt: FlashcardAttempt = {
+        id: -Date.now(),
         result,
-        userId,
-      });
-
-      if (!attempt) return;
+        attempted_at: new Date().toISOString(),
+        response_ms: 0,
+      };
 
       dispatch({
         type: "SUBMIT_ANSWER",
         isCorrect,
         userAnswer: answer,
-        attempt,
+        attempt: localAttempt,
+      });
+
+      recordFlashcardAttempt({
+        flashcardUid: currentCard.uid,
+        setId,
+        result,
+        userId,
+        responseMs: 0,
       });
     },
-    [currentCard, dispatch, setId, user?.id, validateAnswer],
+    [currentCard, setId, user?.id, validateAnswer],
   );
 
   const nextQuestion = useCallback(() => {
@@ -441,7 +441,7 @@ function PracticePage() {
         if (["1", "2", "3", "4"].includes(event.key)) {
           const index = parseInt(event.key) - 1;
           if (options[index]) {
-            void handleAnswer(options[index]);
+            handleAnswer(options[index]);
           }
         }
       }
@@ -506,7 +506,7 @@ function PracticePage() {
               {!state.showAnswer && !state.isShortAnswerQuestion && (
                 <RadioGroup
                   onValueChange={(value) => {
-                    void handleAnswer(value);
+                    handleAnswer(value);
                   }}
                 >
                   <div className="space-y-3">
@@ -553,7 +553,7 @@ function PracticePage() {
                         if (lastAttempt) {
                           dispatch({ type: "MARK_CORRECT", attemptId: lastAttempt.id });
                           if (lastAttempt.id > 0) {
-                            void updateFlashcardAttemptResult(lastAttempt.id, "correct");
+                            updateFlashcardAttemptResult(lastAttempt.id, "correct");
                           }
                           nextQuestion();
                         }
@@ -572,7 +572,7 @@ function PracticePage() {
                         if (lastAttempt) {
                           dispatch({ type: "MARK_UNSURE", attemptId: lastAttempt.id });
                           if (lastAttempt.id > 0) {
-                            void updateFlashcardAttemptResult(lastAttempt.id, "unsure");
+                            updateFlashcardAttemptResult(lastAttempt.id, "unsure");
                           }
                           nextQuestion();
                         }
@@ -619,27 +619,20 @@ async function recordFlashcardAttempt({
   result: FlashcardAttemptResult;
   userId?: string | null;
   responseMs?: number;
-}): Promise<FlashcardAttempt | null> {
-  if (!userId) return null;
+}): Promise<void> {
+  if (!userId) return;
 
-  const { data, error } = await supabase
-    .from("flashcard_attempts")
-    .insert({
-      user_id: userId,
-      set_id: setId,
-      flashcard_uid: flashcardUid,
-      result,
-      response_ms: responseMs,
-    })
-    .select("id, attempted_at, result, response_ms")
-    .single();
+  const { error } = await supabase.from("flashcard_attempts").insert({
+    user_id: userId,
+    set_id: setId,
+    flashcard_uid: flashcardUid,
+    result,
+    response_ms: responseMs,
+  });
 
   if (error) {
     console.error("Failed to record flashcard attempt:", error);
-    return null;
   }
-
-  return data as FlashcardAttempt;
 }
 
 async function updateFlashcardAttemptResult(attemptId: number, result: FlashcardAttemptResult) {
