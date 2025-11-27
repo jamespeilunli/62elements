@@ -1,13 +1,14 @@
 "use client";
 
-import { Algorithm, ChunkedSpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
-import { Flashcard, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import BackLink from "@/components/back-link";
+import { Algorithm, ChunkedSpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
+import { Flashcard, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { supabase } from "@/lib/supabaseClient";
 import { Check, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, Suspense, useState, useRef } from "react";
@@ -312,6 +313,7 @@ function PracticePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <BackLink href="/study" label="Back to Study" className="mb-4" />
       <h1 className="text-3xl font-bold mb-6">{currentCard ? "Practice Mode" : status}</h1>
       {currentCard && (
         <div>
