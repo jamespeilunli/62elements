@@ -7,14 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import BackLink from "@/components/back-link";
+import { useAuth } from "@/contexts/AuthContext";
 import { Algorithm, ChunkedSpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
 import { Flashcard, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { supabase } from "@/lib/supabaseClient";
-import { Check, X } from "lucide-react";
+import { Check, Settings, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, Suspense, useState, useRef } from "react";
+import { getUserSetPreferences, upsertUserSetPreferences } from "@/lib/data";
 
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
+type PracticeSettings = { quizMode: QuizMode; answerType: AnswerType };
 
 interface PracticeState {
   flashcards: Flashcard[];
@@ -168,27 +171,22 @@ function AnswerInput({ handleAnswer }: { handleAnswer: (value: string) => void }
 }
 
 function QuizControls({
-  quizMode,
-  answerType,
-  dispatch,
+  settings,
+  onChange,
 }: {
-  quizMode: QuizMode;
-  answerType: AnswerType;
-  dispatch: React.Dispatch<PracticeAction>;
+  settings: PracticeSettings;
+  onChange: (update: Partial<PracticeSettings>) => void;
 }) {
+  const { quizMode, answerType } = settings;
+
   return (
-    <div className="mb-6 flex flex-wrap gap-4 items-center justify-between">
+    <div className="flex flex-wrap gap-4 items-center justify-between">
       <div className="flex items-center space-x-2">
         <Label htmlFor="quiz-mode">Quiz Mode:</Label>
         <select
           id="quiz-mode"
           value={quizMode}
-          onChange={(e) =>
-            dispatch({
-              type: "SET_QUIZ_MODE",
-              quizMode: e.target.value as QuizMode,
-            })
-          }
+          onChange={(e) => onChange({ quizMode: e.target.value as QuizMode })}
           className="border rounded p-2"
         >
           <option value="term-to-definition">Term to Definition</option>
@@ -201,12 +199,7 @@ function QuizControls({
         <select
           id="answer-type"
           value={answerType}
-          onChange={(e) =>
-            dispatch({
-              type: "SET_ANSWER_TYPE",
-              answerType: e.target.value as AnswerType,
-            })
-          }
+          onChange={(e) => onChange({ answerType: e.target.value as AnswerType })}
           className="border rounded p-2"
         >
           <option value="multiple-choice">Multiple Choice</option>
@@ -218,15 +211,68 @@ function QuizControls({
   );
 }
 
+function SettingsModal({
+  open,
+  settings,
+  onChange,
+  onSave,
+  onClose,
+  saving,
+}: {
+  open: boolean;
+  settings: PracticeSettings;
+  onChange: (update: Partial<PracticeSettings>) => void;
+  onSave: () => void;
+  onClose: () => void;
+  saving: boolean;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <Card className="w-full max-w-lg">
+        <CardContent className="p-6 space-y-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Practice Settings</h2>
+            </div>
+          </div>
+          <QuizControls
+            settings={settings}
+            onChange={onChange}
+          />
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={onSave} disabled={saving}>
+              {saving ? "Saving..." : "Save Preferences"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function PracticePage() {
-  const { flashcards, status } = useFlashcardData();
+  const { status, flashcards, set } = useFlashcardData();
+  const { user } = useAuth();
   const [state, dispatch] = useReducer(practiceReducer, initialState);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+  const [draftSettings, setDraftSettings] = useState<PracticeSettings>({
+    quizMode: initialState.quizMode,
+    answerType: initialState.answerType,
+  });
 
   const algorithm = useMemo(() => new ChunkedSpacedRepetitionAlgorithm(), []);
 
   const currentCard = state.flashcards[state.currentCardIndex];
 
   const hasInitialized = useRef(false);
+  const hasLoadedPreferences = useRef(false);
+  const preferenceStorageKey = useMemo(() => (set?.id ? `practice-preferences-${set.id}` : null), [set?.id]);
 
   const shuffleCards = useCallback(() => {
     // shuffle: https://stackoverflow.com/a/46545530
@@ -238,6 +284,63 @@ function PracticePage() {
     dispatch({ type: "NEXT_QUESTION", algorithm });
     dispatch({ type: "PREPARE_QUESTION" });
   }, [flashcards, algorithm]);
+
+  const applyPreferences = useCallback((settings: PracticeSettings) => {
+    dispatch({ type: "SET_QUIZ_MODE", quizMode: settings.quizMode });
+    dispatch({ type: "SET_ANSWER_TYPE", answerType: settings.answerType });
+    setDraftSettings(settings);
+    dispatch({ type: "PREPARE_QUESTION" });
+  }, []);
+
+  const updateDraftSettings = useCallback((update: Partial<PracticeSettings>) => {
+    setDraftSettings((prev) => ({ ...prev, ...update }));
+  }, []);
+
+  useEffect(() => {
+    if (!set?.id || hasLoadedPreferences.current) return;
+
+    const loadPreferences = async () => {
+      let applied = false;
+      if (user) {
+        const { data, error } = await getUserSetPreferences(set.id);
+        if (error) {
+          console.error("Failed to fetch preferences", error);
+        }
+        if (data) {
+          applyPreferences({ quizMode: data.quiz_mode, answerType: data.answer_type });
+          applied = true;
+        }
+      }
+
+      if (!applied && preferenceStorageKey) {
+        try {
+          const raw = localStorage.getItem(preferenceStorageKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            applyPreferences({
+              quizMode: parsed.quizMode as QuizMode,
+              answerType: parsed.answerType as AnswerType,
+            });
+            applied = true;
+          }
+        } catch (error) {
+          console.error("Failed to read stored preferences", error);
+        }
+      }
+
+      if (applied) {
+        hasLoadedPreferences.current = true;
+      }
+    };
+
+    loadPreferences();
+  }, [applyPreferences, preferenceStorageKey, set?.id, user]);
+
+  useEffect(() => {
+    if (!preferenceStorageKey) return;
+    const payload = JSON.stringify({ quizMode: state.quizMode, answerType: state.answerType });
+    localStorage.setItem(preferenceStorageKey, payload);
+  }, [preferenceStorageKey, state.answerType, state.quizMode]);
 
   useEffect(() => {
     if (flashcards.length > 0 && !hasInitialized.current) {
@@ -311,13 +414,56 @@ function PracticePage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [state.showAnswer, state.isShortAnswerQuestion, options, handleAnswer, nextQuestion]);
 
+  const savePreferences = useCallback(async () => {
+    if (!set?.id) {
+      setIsSettingsOpen(false);
+      return;
+    }
+
+    applyPreferences(draftSettings);
+    setIsSavingPreferences(true);
+
+    if (user) {
+      try {
+        await upsertUserSetPreferences({
+          setId: set.id,
+          quizMode: draftSettings.quizMode,
+          answerType: draftSettings.answerType,
+          userId: user.id,
+        });
+      } catch (error) {
+        console.error("Failed to save preferences", error);
+      }
+    }
+
+    setIsSavingPreferences(false);
+    setIsSettingsOpen(false);
+  }, [applyPreferences, draftSettings, set?.id, user]);
+
+  useEffect(() => {
+    if (isSettingsOpen) {
+      setDraftSettings({ quizMode: state.quizMode, answerType: state.answerType });
+    }
+  }, [isSettingsOpen, state.answerType, state.quizMode]);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <BackLink href="/study" label="Back to Study" className="mb-4" />
-      <h1 className="text-3xl font-bold mb-6">{currentCard ? "Practice Mode" : status}</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-3xl font-bold">{currentCard ? "Practice Mode" : status}</h1>
+        {currentCard && (
+          <Button
+            variant="outline"
+            onClick={() => setIsSettingsOpen(true)}
+            aria-label="Practice settings"
+            className="h-10 w-10 p-0"
+          >
+            <Settings className="h-5 w-5" />
+          </Button>
+        )}
+      </div>
       {currentCard && (
         <div>
-          <QuizControls quizMode={state.quizMode} answerType={state.answerType} dispatch={dispatch} />
           <Card className="mb-6">
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold mb-4">{question}</h2>
@@ -397,6 +543,14 @@ function PracticePage() {
           </div>
         </div>
       )}
+      <SettingsModal
+        open={isSettingsOpen}
+        settings={draftSettings}
+        onChange={updateDraftSettings}
+        onSave={savePreferences}
+        onClose={() => setIsSettingsOpen(false)}
+        saving={isSavingPreferences}
+      />
     </div>
   );
 }
