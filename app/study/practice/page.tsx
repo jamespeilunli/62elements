@@ -17,6 +17,7 @@ import { getUserSetPreferences, upsertUserSetPreferences } from "@/lib/data";
 
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
+type PracticeSettings = { quizMode: QuizMode; answerType: AnswerType };
 
 interface PracticeState {
   flashcards: Flashcard[];
@@ -170,16 +171,14 @@ function AnswerInput({ handleAnswer }: { handleAnswer: (value: string) => void }
 }
 
 function QuizControls({
-  quizMode,
-  answerType,
-  onQuizModeChange,
-  onAnswerTypeChange,
+  settings,
+  onChange,
 }: {
-  quizMode: QuizMode;
-  answerType: AnswerType;
-  onQuizModeChange: (value: QuizMode) => void;
-  onAnswerTypeChange: (value: AnswerType) => void;
+  settings: PracticeSettings;
+  onChange: (update: Partial<PracticeSettings>) => void;
 }) {
+  const { quizMode, answerType } = settings;
+
   return (
     <div className="flex flex-wrap gap-4 items-center justify-between">
       <div className="flex items-center space-x-2">
@@ -187,7 +186,7 @@ function QuizControls({
         <select
           id="quiz-mode"
           value={quizMode}
-          onChange={(e) => onQuizModeChange(e.target.value as QuizMode)}
+          onChange={(e) => onChange({ quizMode: e.target.value as QuizMode })}
           className="border rounded p-2"
         >
           <option value="term-to-definition">Term to Definition</option>
@@ -200,7 +199,7 @@ function QuizControls({
         <select
           id="answer-type"
           value={answerType}
-          onChange={(e) => onAnswerTypeChange(e.target.value as AnswerType)}
+          onChange={(e) => onChange({ answerType: e.target.value as AnswerType })}
           className="border rounded p-2"
         >
           <option value="multiple-choice">Multiple Choice</option>
@@ -214,19 +213,15 @@ function QuizControls({
 
 function SettingsModal({
   open,
-  quizMode,
-  answerType,
-  onQuizModeChange,
-  onAnswerTypeChange,
+  settings,
+  onChange,
   onSave,
   onClose,
   saving,
 }: {
   open: boolean;
-  quizMode: QuizMode;
-  answerType: AnswerType;
-  onQuizModeChange: (value: QuizMode) => void;
-  onAnswerTypeChange: (value: AnswerType) => void;
+  settings: PracticeSettings;
+  onChange: (update: Partial<PracticeSettings>) => void;
   onSave: () => void;
   onClose: () => void;
   saving: boolean;
@@ -243,10 +238,8 @@ function SettingsModal({
             </div>
           </div>
           <QuizControls
-            quizMode={quizMode}
-            answerType={answerType}
-            onQuizModeChange={onQuizModeChange}
-            onAnswerTypeChange={onAnswerTypeChange}
+            settings={settings}
+            onChange={onChange}
           />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={onClose} disabled={saving}>
@@ -268,8 +261,10 @@ function PracticePage() {
   const [state, dispatch] = useReducer(practiceReducer, initialState);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
-  const [draftQuizMode, setDraftQuizMode] = useState<QuizMode>(initialState.quizMode);
-  const [draftAnswerType, setDraftAnswerType] = useState<AnswerType>(initialState.answerType);
+  const [draftSettings, setDraftSettings] = useState<PracticeSettings>({
+    quizMode: initialState.quizMode,
+    answerType: initialState.answerType,
+  });
 
   const algorithm = useMemo(() => new ChunkedSpacedRepetitionAlgorithm(), []);
 
@@ -290,12 +285,15 @@ function PracticePage() {
     dispatch({ type: "PREPARE_QUESTION" });
   }, [flashcards, algorithm]);
 
-  const applyPreferences = useCallback((quizMode: QuizMode, answerType: AnswerType) => {
-    dispatch({ type: "SET_QUIZ_MODE", quizMode });
-    dispatch({ type: "SET_ANSWER_TYPE", answerType });
-    setDraftQuizMode(quizMode);
-    setDraftAnswerType(answerType);
+  const applyPreferences = useCallback((settings: PracticeSettings) => {
+    dispatch({ type: "SET_QUIZ_MODE", quizMode: settings.quizMode });
+    dispatch({ type: "SET_ANSWER_TYPE", answerType: settings.answerType });
+    setDraftSettings(settings);
     dispatch({ type: "PREPARE_QUESTION" });
+  }, []);
+
+  const updateDraftSettings = useCallback((update: Partial<PracticeSettings>) => {
+    setDraftSettings((prev) => ({ ...prev, ...update }));
   }, []);
 
   useEffect(() => {
@@ -309,7 +307,7 @@ function PracticePage() {
           console.error("Failed to fetch preferences", error);
         }
         if (data) {
-          applyPreferences(data.quiz_mode, data.answer_type);
+          applyPreferences({ quizMode: data.quiz_mode, answerType: data.answer_type });
           applied = true;
         }
       }
@@ -319,7 +317,10 @@ function PracticePage() {
           const raw = localStorage.getItem(preferenceStorageKey);
           if (raw) {
             const parsed = JSON.parse(raw);
-            applyPreferences(parsed.quizMode as QuizMode, parsed.answerType as AnswerType);
+            applyPreferences({
+              quizMode: parsed.quizMode as QuizMode,
+              answerType: parsed.answerType as AnswerType,
+            });
             applied = true;
           }
         } catch (error) {
@@ -419,15 +420,15 @@ function PracticePage() {
       return;
     }
 
-    applyPreferences(draftQuizMode, draftAnswerType);
+    applyPreferences(draftSettings);
     setIsSavingPreferences(true);
 
     if (user) {
       try {
         await upsertUserSetPreferences({
           setId: set.id,
-          quizMode: draftQuizMode,
-          answerType: draftAnswerType,
+          quizMode: draftSettings.quizMode,
+          answerType: draftSettings.answerType,
           userId: user.id,
         });
       } catch (error) {
@@ -437,12 +438,11 @@ function PracticePage() {
 
     setIsSavingPreferences(false);
     setIsSettingsOpen(false);
-  }, [applyPreferences, draftAnswerType, draftQuizMode, set?.id, user]);
+  }, [applyPreferences, draftSettings, set?.id, user]);
 
   useEffect(() => {
     if (isSettingsOpen) {
-      setDraftQuizMode(state.quizMode);
-      setDraftAnswerType(state.answerType);
+      setDraftSettings({ quizMode: state.quizMode, answerType: state.answerType });
     }
   }, [isSettingsOpen, state.answerType, state.quizMode]);
 
@@ -545,10 +545,8 @@ function PracticePage() {
       )}
       <SettingsModal
         open={isSettingsOpen}
-        quizMode={draftQuizMode}
-        answerType={draftAnswerType}
-        onQuizModeChange={setDraftQuizMode}
-        onAnswerTypeChange={setDraftAnswerType}
+        settings={draftSettings}
+        onChange={updateDraftSettings}
         onSave={savePreferences}
         onClose={() => setIsSettingsOpen(false)}
         saving={isSavingPreferences}
