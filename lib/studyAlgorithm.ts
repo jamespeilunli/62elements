@@ -1,36 +1,40 @@
+import { time } from "console";
 import { Flashcard, FlashcardAttempt } from "../hooks/useFlashcardData";
 
 export interface Algorithm {
-  nextQuestion(
-    flashcards: Flashcard[],
-    flashcardAttempts: FlashcardAttempt[],
-    currentIndex: number,
-    totalAttempts: number,
-  ): number;
+  nextQuestion(flashcards: Flashcard[], flashcardAttempts: FlashcardAttempt[], currentIndex: number): number;
 }
 
 function getCardStats(card: Flashcard, attempts: FlashcardAttempt[]) {
-  const cardAttempts = attempts.filter((attempt) => attempt.flashcardUid === card.uid);
-  const missedAttempts = cardAttempts.filter((attempt) => attempt.result === "incorrect").length;
-  const unsureAttempts = cardAttempts.filter((attempt) => attempt.result === "unsure").length;
-  const totalAttempts = cardAttempts.length;
-  const lastAttemptIndex = totalAttempts;
+  const cardAttempts = attempts
+    .map((attempt, index) => ({ attempt, overallIndex: index }))
+    .filter(({ attempt }) => attempt.flashcardUid === card.uid);
 
-  if (totalAttempts === 0) {
-    return { difficulty: 1, confidence: 0, totalAttempts };
+  if (cardAttempts.length === 0) {
+    return { difficulty: 1, totalAttempts: 0, priority: 0.5 };
   }
 
-  const correctAttempts = totalAttempts - missedAttempts - unsureAttempts;
+  const cardAttemptRange = cardAttempts[cardAttempts.length - 1].overallIndex - cardAttempts[0].overallIndex;
 
-  const confidence = (correctAttempts + unsureAttempts * 0.5) / totalAttempts;
+  const difficultyFactor =
+    cardAttempts.reduce((acc, { attempt, overallIndex }, index) => {
+      const timeFactor =
+        cardAttempts.length === 1 ? 1 : (overallIndex - cardAttempts[0].overallIndex) / cardAttemptRange;
+      const speedFactor = Math.min(1, (attempt.responseMs ?? 0) / 10000);
+      const accuracyFactor = attempt.result === "incorrect" ? 1 : attempt.result === "unsure" ? 0.5 : 0;
+      const value = timeFactor * (0.9 * accuracyFactor + 0.1 * speedFactor);
+      console.log(value + " = " + timeFactor + " * (0.9 * " + accuracyFactor + " + 0.1 * " + speedFactor);
+      return acc + value;
+    }, 0) / cardAttempts.length;
 
-  const difficulty = missedAttempts + unsureAttempts * 0.5 - correctAttempts;
+  const recencyFactor = Math.min(10, attempts.length - cardAttempts[cardAttempts.length - 1].overallIndex) / 10;
+  const priority = 0.8 * difficultyFactor + 0.2 * recencyFactor;
+  console.log(priority + " = 0.7 * " + difficultyFactor + " + 0.3 * " + recencyFactor);
 
   return {
-    confidence,
-    difficulty,
-    totalAttempts,
-    lastAttemptIndex,
+    difficulty: difficultyFactor,
+    totalAttempts: cardAttempts.length,
+    priority,
   };
 }
 
@@ -40,8 +44,8 @@ export function getDifficultyString(card: Flashcard, attempts: FlashcardAttempt[
     return "New";
   }
 
-  if (stats.confidence >= 0.9) return "Proficient";
-  if (stats.confidence >= 0.7) return "Familiar";
+  if (stats.difficulty <= 0.1) return "Proficient";
+  if (stats.difficulty <= 0.3) return "Familiar";
   return "Challenging";
 }
 
@@ -51,12 +55,7 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
 
   constructor(private chunkSize: number = 7) {}
 
-  nextQuestion(
-    flashcards: Flashcard[],
-    flashcardAttempts: FlashcardAttempt[],
-    currentIndex: number,
-    totalAttempts: number,
-  ): number {
+  nextQuestion(flashcards: Flashcard[], flashcardAttempts: FlashcardAttempt[], currentIndex: number): number {
     this.chunkSize = Math.min(this.chunkSize, flashcards.length);
 
     const start = this.chunkIndex * this.chunkSize;
@@ -68,7 +67,7 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
       this.inReview = !this.inReview;
     }
 
-    const selectedId = this.nextQuestionFromChunk(chunk, flashcardAttempts, totalAttempts);
+    const selectedId = this.nextQuestionFromChunk(chunk, flashcardAttempts);
     return flashcards.findIndex((card) => card.uid === selectedId);
   }
 
@@ -92,23 +91,26 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
   private chunkHasUnlearnedWords(chunk: Flashcard[], attempts: FlashcardAttempt[]): boolean {
     return chunk.some((card) => {
       const stats = getCardStats(card, attempts);
-      return stats.difficulty >= 0 || stats.totalAttempts < 2;
+      return stats.totalAttempts === 0 || stats.difficulty >= 0.1;
     });
   }
 
-  private nextQuestionFromChunk(chunk: Flashcard[], attempts: FlashcardAttempt[], totalAttempts: number): number {
-    return chunk.reduce(
-      (bestCard, card) => {
-        const stats = getCardStats(card, attempts);
-        const id = card.uid;
-        const difficultyFactor = stats.difficulty;
-        const recencyFactor = (totalAttempts - (stats.lastAttemptIndex || 0)) / chunk.length;
-        const randomFactor = Math.random() * 0.1;
-        const priority = difficultyFactor + recencyFactor + randomFactor;
+  private nextQuestionFromChunk(chunk: Flashcard[], attempts: FlashcardAttempt[]): number {
+    if (chunk.length === 0) return 0;
 
-        return priority > bestCard.priority ? { id, priority } : bestCard;
+    return chunk.reduce(
+      (bestCard, card, index) => {
+        console.log(card.term);
+        const stats = getCardStats(card, attempts);
+        const priority = stats.priority;
+
+        if (priority > bestCard.priority || (priority === bestCard.priority && index < bestCard.index)) {
+          return { id: card.uid, priority, index };
+        }
+
+        return bestCard;
       },
-      { id: 0, priority: -Infinity },
+      { id: chunk[0].uid, priority: -Infinity, index: chunk.length },
     ).id;
   }
 }

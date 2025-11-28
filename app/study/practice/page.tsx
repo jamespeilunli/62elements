@@ -83,7 +83,6 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
         state.flashcards,
         state.flashcardAttempts,
         state.currentCardIndex,
-        state.flashcardAttempts.length,
       );
 
       return { ...state, currentCardIndex: nextCardIndex };
@@ -273,6 +272,7 @@ function PracticePage() {
 
   const hasInitialized = useRef(false);
   const hasLoadedPreferences = useRef(false);
+  const questionStartRef = useRef<number | null>(null);
   const preferenceStorageKey = useMemo(() => (setId !== null ? `practice-preferences-${setId}` : null), [setId]);
 
   const shuffleCards = useCallback(() => {
@@ -300,6 +300,12 @@ function PracticePage() {
   useEffect(() => {
     dispatch({ type: "SET_FLASHCARD_ATTEMPTS", attempts: flashcardAttempts });
   }, [flashcardAttempts]);
+
+  useEffect(() => {
+    if (!state.showAnswer && currentCard) {
+      questionStartRef.current = performance.now();
+    }
+  }, [state.showAnswer, currentCard]);
 
   useEffect(() => {
     if (setId === null || hasLoadedPreferences.current) return;
@@ -388,13 +394,14 @@ function PracticePage() {
 
       const isCorrect = validateAnswer(answer);
       const result: FlashcardAttemptResult = isCorrect ? "correct" : "incorrect";
+      const durationMs = questionStartRef.current ? Math.max(0, performance.now() - questionStartRef.current) : 0;
 
       const localAttempt: FlashcardAttempt = {
         id: -Date.now(), // used in REPLACE_ATTEMPT in order to know what row to replace with the proper id
         flashcardUid: currentCard.uid,
         result,
         attemptedAt: new Date().toISOString(),
-        responseMs: 0,
+        responseMs: durationMs,
       };
 
       dispatch({
@@ -410,7 +417,7 @@ function PracticePage() {
           setId,
           result,
           userId: user.id,
-          responseMs: 0,
+          responseMs: durationMs,
         }).then((savedAttempt) => {
           if (!savedAttempt) return;
           dispatch({ type: "REPLACE_ATTEMPT", prevId: localAttempt.id, savedAttempt });
