@@ -1,4 +1,3 @@
-import { time } from "console";
 import { Flashcard, FlashcardAttempt } from "../hooks/useFlashcardData";
 
 export interface Algorithm {
@@ -50,24 +49,20 @@ export function getDifficultyString(card: Flashcard, attempts: FlashcardAttempt[
 }
 
 export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
-  private chunkIndex: number = 0;
   private inReview: boolean = false;
+  private currentChunk: Flashcard[] = [];
 
   constructor(private chunkSize: number = 7) {}
 
   nextQuestion(flashcards: Flashcard[], flashcardAttempts: FlashcardAttempt[], currentIndex: number): number {
     this.chunkSize = Math.min(this.chunkSize, flashcards.length);
 
-    const start = this.chunkIndex * this.chunkSize;
-    const end = Math.min(start + this.chunkSize, flashcards.length);
-    const chunk = this.inReview ? this.findReviewCards(flashcards, flashcardAttempts) : flashcards.slice(start, end);
-
-    if (!this.chunkHasUnlearnedWords(chunk, flashcardAttempts)) {
-      this.chunkIndex = this.findNewChunkIndex(flashcards, flashcardAttempts);
+    if (!this.chunkHasUnlearnedWords(this.currentChunk, flashcardAttempts)) {
       this.inReview = !this.inReview;
+      this.currentChunk = this.buildChunk(flashcards, flashcardAttempts);
     }
 
-    const selectedId = this.nextQuestionFromChunk(chunk, flashcardAttempts);
+    const selectedId = this.nextQuestionFromChunk(this.currentChunk, flashcardAttempts);
     return flashcards.findIndex((card) => card.uid === selectedId);
   }
 
@@ -75,23 +70,29 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
     return flashcards.filter((card) => getCardStats(card, attempts).totalAttempts > 0);
   }
 
-  private findNewChunkIndex(flashcards: Flashcard[], attempts: FlashcardAttempt[]): number {
-    const numChunks = Math.ceil(flashcards.length / this.chunkSize);
-    for (let i = 0; i < numChunks; i++) {
-      const start = i * this.chunkSize;
-      const end = Math.min(start + this.chunkSize, flashcards.length);
-      const chunk = flashcards.slice(start, end);
-      if (this.chunkHasUnlearnedWords(chunk, attempts)) {
-        return i;
-      }
-    }
-    return 0;
+  private buildChunk(flashcards: Flashcard[], attempts: FlashcardAttempt[]): Flashcard[] {
+    const pool = this.inReview ? this.findReviewCards(flashcards, attempts) : flashcards;
+    const source = pool.length > 0 ? pool : flashcards;
+
+    const scoredCards = source
+      .map((card) => ({ card, score: this.getChunkScore(card, attempts) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, this.chunkSize)
+      .map(({ card }) => card);
+
+    return scoredCards;
+  }
+
+  private getChunkScore(card: Flashcard, attempts: FlashcardAttempt[]): number {
+    const stats = getCardStats(card, attempts);
+    const attemptScore = Math.max(0, 3 - stats.totalAttempts) / 3;
+    return 0.7 * stats.difficulty + 0.3 * attemptScore;
   }
 
   private chunkHasUnlearnedWords(chunk: Flashcard[], attempts: FlashcardAttempt[]): boolean {
     return chunk.some((card) => {
       const stats = getCardStats(card, attempts);
-      return stats.totalAttempts === 0 || stats.difficulty >= 0.1;
+      return stats.totalAttempts < 3 || stats.difficulty > 0.1;
     });
   }
 
