@@ -375,8 +375,7 @@ function PracticePage() {
 
   const handleAnswer = useCallback(
     (answer: string) => {
-      const userId = user?.id;
-      if (!currentCard || setId === null || !userId) return;
+      if (!currentCard || setId === null) return;
 
       const isCorrect = validateAnswer(answer);
       const result: FlashcardAttemptResult = isCorrect ? "correct" : "incorrect";
@@ -396,13 +395,15 @@ function PracticePage() {
         attempt: localAttempt,
       });
 
-      recordFlashcardAttempt({
-        flashcardUid: currentCard.uid,
-        setId,
-        result,
-        userId,
-        responseMs: 0,
-      });
+      if (user?.id) {
+        recordFlashcardAttempt({
+          flashcardUid: currentCard.uid,
+          setId,
+          result,
+          userId: user.id,
+          responseMs: 0,
+        });
+      }
     },
     [currentCard, setId, user?.id, validateAnswer],
   );
