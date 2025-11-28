@@ -1,17 +1,22 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { getSetById, getUserFlashcards } from "@/lib/data";
-import { supabase } from "@/lib/supabaseClient";
+import { getFlashcardAttemptsBySetId, getFlashcardsBySetId, getSetById } from "@/lib/data";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
+
+export type FlashcardAttemptResult = "correct" | "incorrect" | "unsure";
+
+export interface FlashcardAttempt {
+  id: number;
+  flashcardUid: number;
+  attemptedAt: string;
+  result: FlashcardAttemptResult;
+  responseMs: number;
+}
 
 export interface Flashcard {
   uid: number;
   term: string;
   definition: string;
-  totalAttempts: number;
-  missedAttempts: number;
-  unsureAttempts: number;
-  lastAttempt: number;
 }
 
 export interface FlashcardSet {
@@ -25,6 +30,7 @@ export interface FlashcardSet {
 export const useFlashcardData = () => {
   const searchParams = useSearchParams();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [flashcardAttempts, setFlashcardAttempts] = useState<FlashcardAttempt[]>([]);
   const [status, setStatus] = useState<string>("Loading...");
   const [set, setSet] = useState<FlashcardSet | null>(null);
   const { user } = useAuth();
@@ -47,43 +53,48 @@ export const useFlashcardData = () => {
     }
 
     const fetchData = async () => {
+      setStatus("Loading...");
       try {
-        const { data: set, error: setError } = await getSetById(setId);
-        if (!set) {
+        const { data: setData, error: setError } = await getSetById(setId);
+        if (!setData || setError) {
           setStatus(`Error ${setError}: Could not fetch set`);
           return;
         }
 
-        setSet(set as FlashcardSet);
+        setSet(setData as FlashcardSet);
 
-        if (user) {
-          await supabase.rpc("ensure_user_flashcards", {
-            p_set: setId,
-          });
-        }
-
-        const { data: flashcards, error: cardsError } = await getUserFlashcards(setId);
+        const [{ data: flashcards, error: cardsError }, { data: attempts, error: attemptsError }] = await Promise.all([
+          getFlashcardsBySetId(setId),
+          getFlashcardAttemptsBySetId(setId),
+        ]);
 
         if (cardsError || !flashcards || flashcards.length === 0) {
           setStatus("No flashcards found!");
           return;
         }
 
+        if (attemptsError) {
+          console.error("Failed to fetch flashcard attempts:", attemptsError);
+        }
+
         const formattedCards: Flashcard[] = flashcards.map((card: any) => ({
           uid: card.uid,
-          set: card.set,
           term: card.term,
           definition: card.definition,
-          weight: card.user_flashcards?.[0]?.weight ?? 1,
-          lastAttempt: card.user_flashcards?.[0]?.last_attempt
-            ? new Date(card.user_flashcards[0].last_attempt).getTime()
-            : 0,
-          totalAttempts: card.user_flashcards?.[0]?.total_attempts ?? 0,
-          unsureAttempts: card.user_flashcards?.[0]?.unsure_attempts ?? 0,
-          missedAttempts: card.user_flashcards?.[0]?.missed_attempts ?? 0,
         }));
 
+        const formattedAttempts: FlashcardAttempt[] =
+          attempts?.map((attempt: any) => ({
+            id: attempt.id,
+            flashcardUid: attempt.flashcard_uid,
+            attemptedAt: attempt.attempted_at,
+            result: attempt.result,
+            responseMs: attempt.response_ms ?? 0,
+          })) ?? [];
+
         setFlashcards(formattedCards);
+        setFlashcardAttempts(formattedAttempts);
+        setStatus("");
         localStorage.setItem("last-set", setIdStr);
       } catch (error) {
         console.error(error);
@@ -94,5 +105,5 @@ export const useFlashcardData = () => {
     fetchData();
   }, [searchParams, user]);
 
-  return { status, flashcards, set };
+  return { status, flashcards, flashcardAttempts, set };
 };

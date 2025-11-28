@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import BackLink from "@/components/back-link";
 import { useAuth } from "@/contexts/AuthContext";
 import { Algorithm, ChunkedSpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
-import { Flashcard, useFlashcardData } from "../../../hooks/useFlashcardData";
+import { Flashcard, FlashcardAttempt, FlashcardAttemptResult, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { supabase } from "@/lib/supabaseClient";
 import { Check, Settings, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, Suspense, useState, useRef } from "react";
@@ -21,6 +21,7 @@ type PracticeSettings = { quizMode: QuizMode; answerType: AnswerType };
 
 interface PracticeState {
   flashcards: Flashcard[];
+  flashcardAttempts: FlashcardAttempt[];
   currentCardIndex: number;
   quizMode: QuizMode;
   answerType: AnswerType;
@@ -35,49 +36,54 @@ interface PracticeState {
 
 type PracticeAction =
   | { type: "SHUFFLE_CARDS"; cards: Flashcard[] }
+  | { type: "SET_FLASHCARD_ATTEMPTS"; attempts: FlashcardAttempt[] }
+  | { type: "REPLACE_ATTEMPT"; prevId: number; savedAttempt: FlashcardAttempt }
   | { type: "SET_QUIZ_MODE"; quizMode: QuizMode }
   | { type: "SET_ANSWER_TYPE"; answerType: AnswerType }
-  | { type: "SUBMIT_ANSWER"; isCorrect: boolean; userAnswer: string }
+  | { type: "SUBMIT_ANSWER"; isCorrect: boolean; userAnswer: string; attempt: FlashcardAttempt }
   | { type: "NEXT_QUESTION"; algorithm: Algorithm }
   | { type: "PREPARE_QUESTION" }
-  | { type: "MARK_CORRECT" }
-  | { type: "MARK_UNSURE" };
+  | { type: "MARK_CORRECT"; attemptId: number }
+  | { type: "MARK_UNSURE"; attemptId: number };
 
 function practiceReducer(state: PracticeState, action: PracticeAction): PracticeState {
   switch (action.type) {
     case "SHUFFLE_CARDS":
       return { ...state, flashcards: action.cards };
+    case "SET_FLASHCARD_ATTEMPTS": {
+      return { ...state, flashcardAttempts: action.attempts };
+    }
+    case "REPLACE_ATTEMPT": {
+      const attemptIndex = state.flashcardAttempts.findIndex((attempt) => attempt.id === action.prevId);
+      if (attemptIndex === -1) return state;
+
+      const updatedAttempts = [...state.flashcardAttempts];
+      updatedAttempts[attemptIndex] = action.savedAttempt;
+      return { ...state, flashcardAttempts: updatedAttempts };
+    }
     case "SET_QUIZ_MODE":
       return { ...state, quizMode: action.quizMode };
     case "SET_ANSWER_TYPE":
       return { ...state, answerType: action.answerType };
-    case "SUBMIT_ANSWER":
-      const updatedFlashcards = [...state.flashcards];
-      const currentCard = updatedFlashcards[state.currentCardIndex];
-
-      updatedFlashcards[state.currentCardIndex] = {
-        ...currentCard,
-        totalAttempts: currentCard.totalAttempts + 1,
-        missedAttempts: action.isCorrect ? currentCard.missedAttempts : currentCard.missedAttempts + 1,
-        lastAttempt: state.totalAttempts + 1,
-      };
-
-      updateFlashcardProgress(currentCard.uid, updatedFlashcards[state.currentCardIndex]);
+    case "SUBMIT_ANSWER": {
+      const flashcardAttempts = [...state.flashcardAttempts, action.attempt];
 
       return {
         ...state,
-        flashcards: updatedFlashcards,
+        flashcardAttempts,
         showAnswer: true,
         totalAttempts: state.totalAttempts + 1,
         score: action.isCorrect ? state.score + 1 : state.score,
         isCorrect: action.isCorrect,
         userAnswer: action.userAnswer,
       };
+    }
     case "NEXT_QUESTION": {
       const nextCardIndex = action.algorithm.nextQuestion(
         state.flashcards,
+        state.flashcardAttempts,
         state.currentCardIndex,
-        state.totalAttempts,
+        state.flashcardAttempts.length,
       );
 
       return { ...state, currentCardIndex: nextCardIndex };
@@ -97,38 +103,30 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
       };
     }
     case "MARK_CORRECT": {
-      const correctedFlashcards = [...state.flashcards];
-      const correctedCard = correctedFlashcards[state.currentCardIndex];
+      const attemptIndex = state.flashcardAttempts.findIndex((attempt) => attempt.id === action.attemptId);
 
-      correctedFlashcards[state.currentCardIndex] = {
-        ...correctedCard,
-        missedAttempts: Math.max(0, correctedCard.missedAttempts - 1),
-      };
+      if (attemptIndex === -1) return state;
 
-      updateFlashcardProgress(correctedCard.uid, correctedFlashcards[state.currentCardIndex]);
+      const updatedAttempts = [...state.flashcardAttempts];
+      updatedAttempts[attemptIndex] = { ...updatedAttempts[attemptIndex], result: "correct" };
 
       return {
         ...state,
-        flashcards: correctedFlashcards,
+        flashcardAttempts: updatedAttempts,
         score: state.score + 1,
       };
     }
     case "MARK_UNSURE": {
-      const correctedFlashcards = [...state.flashcards];
-      const correctedCard = correctedFlashcards[state.currentCardIndex];
+      const attemptIndex = state.flashcardAttempts.findIndex((attempt) => attempt.id === action.attemptId);
 
-      correctedFlashcards[state.currentCardIndex] = {
-        ...correctedCard,
-        unsureAttempts: Math.max(0, correctedCard.unsureAttempts + 1),
-        missedAttempts: Math.max(0, correctedCard.missedAttempts - 1),
-      };
+      if (attemptIndex === -1) return state;
 
-      updateFlashcardProgress(correctedCard.uid, correctedFlashcards[state.currentCardIndex]);
+      const updatedAttempts = [...state.flashcardAttempts];
+      updatedAttempts[attemptIndex] = { ...updatedAttempts[attemptIndex], result: "unsure" };
 
       return {
         ...state,
-        flashcards: correctedFlashcards,
-        score: state.score + 1,
+        flashcardAttempts: updatedAttempts,
       };
     }
     default:
@@ -138,6 +136,7 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
 
 const initialState: PracticeState = {
   flashcards: [],
+  flashcardAttempts: [],
   currentCardIndex: 0,
   quizMode: "both",
   answerType: "short-answer",
@@ -150,7 +149,7 @@ const initialState: PracticeState = {
   isCorrect: false,
 };
 
-function AnswerInput({ handleAnswer }: { handleAnswer: (value: string) => void }) {
+function AnswerInput({ handleAnswer }: { handleAnswer: (value: string) => Promise<void> | void }) {
   const [userAnswer, setUserAnswer] = useState("");
   return (
     <form
@@ -237,10 +236,7 @@ function SettingsModal({
               <h2 className="text-xl font-semibold">Practice Settings</h2>
             </div>
           </div>
-          <QuizControls
-            settings={settings}
-            onChange={onChange}
-          />
+          <QuizControls settings={settings} onChange={onChange} />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={onClose} disabled={saving}>
               Cancel
@@ -256,7 +252,7 @@ function SettingsModal({
 }
 
 function PracticePage() {
-  const { status, flashcards, set } = useFlashcardData();
+  const { status, flashcards, flashcardAttempts, set } = useFlashcardData();
   const { user } = useAuth();
   const [state, dispatch] = useReducer(practiceReducer, initialState);
   const setId = set?.id ?? null;
@@ -270,13 +266,14 @@ function PracticePage() {
   const algorithm = useMemo(() => new ChunkedSpacedRepetitionAlgorithm(), []);
 
   const currentCard = state.flashcards[state.currentCardIndex];
+  const currentCardAttempts = useMemo(() => {
+    if (!currentCard) return [];
+    return state.flashcardAttempts.filter((attempt) => attempt.flashcardUid === currentCard.uid);
+  }, [currentCard, state.flashcardAttempts]);
 
   const hasInitialized = useRef(false);
   const hasLoadedPreferences = useRef(false);
-  const preferenceStorageKey = useMemo(
-    () => (setId !== null ? `practice-preferences-${setId}` : null),
-    [setId],
-  );
+  const preferenceStorageKey = useMemo(() => (setId !== null ? `practice-preferences-${setId}` : null), [setId]);
 
   const shuffleCards = useCallback(() => {
     // shuffle: https://stackoverflow.com/a/46545530
@@ -299,6 +296,10 @@ function PracticePage() {
   const updateDraftSettings = useCallback((update: Partial<PracticeSettings>) => {
     setDraftSettings((prev) => ({ ...prev, ...update }));
   }, []);
+
+  useEffect(() => {
+    dispatch({ type: "SET_FLASHCARD_ATTEMPTS", attempts: flashcardAttempts });
+  }, [flashcardAttempts]);
 
   useEffect(() => {
     if (setId === null || hasLoadedPreferences.current) return;
@@ -383,14 +384,40 @@ function PracticePage() {
 
   const handleAnswer = useCallback(
     (answer: string) => {
+      if (!currentCard || setId === null) return;
+
       const isCorrect = validateAnswer(answer);
+      const result: FlashcardAttemptResult = isCorrect ? "correct" : "incorrect";
+
+      const localAttempt: FlashcardAttempt = {
+        id: -Date.now(), // used in REPLACE_ATTEMPT in order to know what row to replace with the proper id
+        flashcardUid: currentCard.uid,
+        result,
+        attemptedAt: new Date().toISOString(),
+        responseMs: 0,
+      };
+
       dispatch({
         type: "SUBMIT_ANSWER",
         isCorrect,
         userAnswer: answer,
+        attempt: localAttempt,
       });
+
+      if (user?.id) {
+        recordFlashcardAttempt({
+          flashcardUid: currentCard.uid,
+          setId,
+          result,
+          userId: user.id,
+          responseMs: 0,
+        }).then((savedAttempt) => {
+          if (!savedAttempt) return;
+          dispatch({ type: "REPLACE_ATTEMPT", prevId: localAttempt.id, savedAttempt });
+        });
+      }
     },
-    [validateAnswer],
+    [currentCard, setId, user?.id, validateAnswer],
   );
 
   const nextQuestion = useCallback(() => {
@@ -472,7 +499,11 @@ function PracticePage() {
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold mb-4">{question}</h2>
               {!state.showAnswer && !state.isShortAnswerQuestion && (
-                <RadioGroup onValueChange={handleAnswer}>
+                <RadioGroup
+                  onValueChange={(value) => {
+                    handleAnswer(value);
+                  }}
+                >
                   <div className="space-y-3">
                     {options.map((option, index) => (
                       <div key={index} className="flex items-center space-x-3">
@@ -513,8 +544,15 @@ function PracticePage() {
                   {!state.isCorrect && (
                     <Button
                       onClick={() => {
-                        dispatch({ type: "MARK_CORRECT" });
-                        nextQuestion();
+                        const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
+                        if (lastAttempt) {
+                          dispatch({ type: "MARK_CORRECT", attemptId: lastAttempt.id });
+                          console.log(lastAttempt.id);
+                          if (lastAttempt.id > 0) {
+                            updateFlashcardAttemptResult(lastAttempt.id, "correct");
+                          }
+                          nextQuestion();
+                        }
                       }}
                       className="ml-4"
                       variant="outline"
@@ -526,8 +564,14 @@ function PracticePage() {
                   {state.isCorrect && (
                     <Button
                       onClick={() => {
-                        dispatch({ type: "MARK_UNSURE" });
-                        nextQuestion();
+                        const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
+                        if (lastAttempt) {
+                          dispatch({ type: "MARK_UNSURE", attemptId: lastAttempt.id });
+                          if (lastAttempt.id > 0) {
+                            updateFlashcardAttemptResult(lastAttempt.id, "unsure");
+                          }
+                          nextQuestion();
+                        }
                       }}
                       className="ml-4"
                     >
@@ -559,33 +603,56 @@ function PracticePage() {
   );
 }
 
-const updateFlashcardProgress = async (uid: number, card: Flashcard) => {
-  try {
-    const { data, error } = await supabase
-      .from("user_flashcards")
-      .update({
-        total_attempts: card.totalAttempts,
-        missed_attempts: card.missedAttempts,
-        unsure_attempts: card.unsureAttempts,
-        last_attempt: card.lastAttempt,
-      })
-      .eq("flashcard_uid", uid)
-      .select();
+async function recordFlashcardAttempt({
+  flashcardUid,
+  setId,
+  result,
+  userId,
+  responseMs = 0,
+}: {
+  flashcardUid: number;
+  setId: number;
+  result: FlashcardAttemptResult;
+  userId?: string | null;
+  responseMs?: number;
+}): Promise<FlashcardAttempt | null> {
+  if (!userId) return null;
 
-    if (error) {
-      console.error("Supabase error:", error);
-      return;
-    }
+  const { data, error } = await supabase
+    .from("flashcard_attempts")
+    .insert({
+      user_id: userId,
+      set_id: setId,
+      flashcard_uid: flashcardUid,
+      result,
+      response_ms: responseMs,
+    })
+    .select()
+    .single();
 
-    if (data.length === 0) {
-      console.error("updateFlashcardProgress supabase response is empty, flashcard likely not updated");
-    }
-
-    return data;
-  } catch (error) {
-    console.error("Failed to update flashcard progress:", error);
+  if (error) {
+    console.error("Failed to record flashcard attempt:", error);
+    return null;
   }
-};
+
+  return {
+    id: data.id,
+    flashcardUid: data.flashcard_uid,
+    attemptedAt: data.attempted_at,
+    result: data.result,
+    responseMs: data.response_ms ?? 0,
+  };
+}
+
+async function updateFlashcardAttemptResult(attemptId: number, result: FlashcardAttemptResult) {
+  if (attemptId <= 0) return;
+
+  const { error } = await supabase.from("flashcard_attempts").update({ result }).eq("id", attemptId);
+
+  if (error) {
+    console.error("Failed to update flashcard attempt result:", error);
+  }
+}
 
 const Page = () => (
   <Suspense fallback={<div>Loading...</div>}>
