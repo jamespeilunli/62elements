@@ -1,7 +1,7 @@
 import { Flashcard, FlashcardAttempt } from "../hooks/useFlashcardData";
 
 export interface Algorithm {
-  nextQuestion(flashcards: Flashcard[], flashcardAttempts: FlashcardAttempt[], currentIndex: number): number;
+  nextQuestion(flashcards: Flashcard[], flashcardAttempts: FlashcardAttempt[]): number;
 }
 
 function getCardStats(card: Flashcard, attempts: FlashcardAttempt[]) {
@@ -54,7 +54,7 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
 
   constructor(private chunkSize: number = 7) {}
 
-  nextQuestion(flashcards: Flashcard[], flashcardAttempts: FlashcardAttempt[], currentIndex: number): number {
+  nextQuestion(flashcards: Flashcard[], flashcardAttempts: FlashcardAttempt[]): number {
     this.chunkSize = Math.min(this.chunkSize, flashcards.length);
 
     if (!this.chunkHasUnlearnedWords(this.currentChunk, flashcardAttempts)) {

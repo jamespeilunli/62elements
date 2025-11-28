@@ -79,11 +79,7 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
       };
     }
     case "NEXT_QUESTION": {
-      const nextCardIndex = action.algorithm.nextQuestion(
-        state.flashcards,
-        state.flashcardAttempts,
-        state.currentCardIndex,
-      );
+      const nextCardIndex = action.algorithm.nextQuestion(state.flashcards, state.flashcardAttempts);
 
       return { ...state, currentCardIndex: nextCardIndex };
     }
