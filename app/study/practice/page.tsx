@@ -37,6 +37,7 @@ interface PracticeState {
 type PracticeAction =
   | { type: "SHUFFLE_CARDS"; cards: Flashcard[] }
   | { type: "SET_FLASHCARD_ATTEMPTS"; attempts: FlashcardAttempt[] }
+  | { type: "REPLACE_ATTEMPT"; prevId: number; savedAttempt: FlashcardAttempt }
   | { type: "SET_QUIZ_MODE"; quizMode: QuizMode }
   | { type: "SET_ANSWER_TYPE"; answerType: AnswerType }
   | { type: "SUBMIT_ANSWER"; isCorrect: boolean; userAnswer: string; attempt: FlashcardAttempt }
@@ -51,6 +52,14 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
       return { ...state, flashcards: action.cards };
     case "SET_FLASHCARD_ATTEMPTS": {
       return { ...state, flashcardAttempts: action.attempts };
+    }
+    case "REPLACE_ATTEMPT": {
+      const attemptIndex = state.flashcardAttempts.findIndex((attempt) => attempt.id === action.prevId);
+      if (attemptIndex === -1) return state;
+
+      const updatedAttempts = [...state.flashcardAttempts];
+      updatedAttempts[attemptIndex] = action.savedAttempt;
+      return { ...state, flashcardAttempts: updatedAttempts };
     }
     case "SET_QUIZ_MODE":
       return { ...state, quizMode: action.quizMode };
@@ -381,7 +390,7 @@ function PracticePage() {
       const result: FlashcardAttemptResult = isCorrect ? "correct" : "incorrect";
 
       const localAttempt: FlashcardAttempt = {
-        id: -Date.now(),
+        id: -Date.now(), // used in REPLACE_ATTEMPT in order to know what row to replace with the proper id
         flashcardUid: currentCard.uid,
         result,
         attemptedAt: new Date().toISOString(),
@@ -402,6 +411,9 @@ function PracticePage() {
           result,
           userId: user.id,
           responseMs: 0,
+        }).then((savedAttempt) => {
+          if (!savedAttempt) return;
+          dispatch({ type: "REPLACE_ATTEMPT", prevId: localAttempt.id, savedAttempt });
         });
       }
     },
@@ -535,6 +547,7 @@ function PracticePage() {
                         const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
                         if (lastAttempt) {
                           dispatch({ type: "MARK_CORRECT", attemptId: lastAttempt.id });
+                          console.log(lastAttempt.id);
                           if (lastAttempt.id > 0) {
                             updateFlashcardAttemptResult(lastAttempt.id, "correct");
                           }
@@ -602,20 +615,33 @@ async function recordFlashcardAttempt({
   result: FlashcardAttemptResult;
   userId?: string | null;
   responseMs?: number;
-}): Promise<void> {
-  if (!userId) return;
+}): Promise<FlashcardAttempt | null> {
+  if (!userId) return null;
 
-  const { error } = await supabase.from("flashcard_attempts").insert({
-    user_id: userId,
-    set_id: setId,
-    flashcard_uid: flashcardUid,
-    result,
-    response_ms: responseMs,
-  });
+  const { data, error } = await supabase
+    .from("flashcard_attempts")
+    .insert({
+      user_id: userId,
+      set_id: setId,
+      flashcard_uid: flashcardUid,
+      result,
+      response_ms: responseMs,
+    })
+    .select()
+    .single();
 
   if (error) {
     console.error("Failed to record flashcard attempt:", error);
+    return null;
   }
+
+  return {
+    id: data.id,
+    flashcardUid: data.flashcard_uid,
+    attemptedAt: data.attempted_at,
+    result: data.result,
+    responseMs: data.response_ms ?? 0,
+  };
 }
 
 async function updateFlashcardAttemptResult(attemptId: number, result: FlashcardAttemptResult) {
