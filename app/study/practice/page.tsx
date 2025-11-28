@@ -550,7 +550,6 @@ function PracticePage() {
                         const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
                         if (lastAttempt) {
                           dispatch({ type: "MARK_CORRECT", attemptId: lastAttempt.id });
-                          console.log(lastAttempt.id);
                           if (lastAttempt.id > 0) {
                             updateFlashcardAttemptResult(lastAttempt.id, "correct");
                           }

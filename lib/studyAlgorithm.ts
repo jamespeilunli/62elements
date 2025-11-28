@@ -22,13 +22,11 @@ function getCardStats(card: Flashcard, attempts: FlashcardAttempt[]) {
       const speedFactor = Math.min(1, (attempt.responseMs ?? 0) / 10000);
       const accuracyFactor = attempt.result === "incorrect" ? 1 : attempt.result === "unsure" ? 0.5 : 0;
       const value = timeFactor * (0.9 * accuracyFactor + 0.1 * speedFactor);
-      console.log(value + " = " + timeFactor + " * (0.9 * " + accuracyFactor + " + 0.1 * " + speedFactor);
       return acc + value;
     }, 0) / cardAttempts.length;
 
   const recencyFactor = Math.min(10, attempts.length - cardAttempts[cardAttempts.length - 1].overallIndex) / 10;
   const priority = 0.8 * difficultyFactor + 0.2 * recencyFactor;
-  console.log(priority + " = 0.7 * " + difficultyFactor + " + 0.3 * " + recencyFactor);
 
   return {
     difficulty: difficultyFactor,
@@ -101,7 +99,6 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
 
     return chunk.reduce(
       (bestCard, card, index) => {
-        console.log(card.term);
         const stats = getCardStats(card, attempts);
         const priority = stats.priority;
 
