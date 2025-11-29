@@ -8,7 +8,11 @@ import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import BackLink from "@/components/back-link";
 import { useAuth } from "@/contexts/AuthContext";
-import { Algorithm, ChunkedSpacedRepetitionAlgorithm } from "../../../lib/studyAlgorithm";
+import {
+  Algorithm,
+  ChunkedSpacedRepetitionAlgorithm,
+  ChunkedSpacedRepetitionConfig,
+} from "../../../lib/studyAlgorithm";
 import { Flashcard, FlashcardAttempt, FlashcardAttemptResult, useFlashcardData } from "../../../hooks/useFlashcardData";
 import { supabase } from "@/lib/supabaseClient";
 import { Check, Settings, X } from "lucide-react";
@@ -17,14 +21,48 @@ import { getUserSetPreferences, upsertUserSetPreferences } from "@/lib/data";
 
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
-type PracticeSettings = { quizMode: QuizMode; answerType: AnswerType };
+type RigorousnessLevel = "relaxed" | "balanced" | "intense";
+type PracticeSettings = {
+  quizMode: QuizMode;
+  answerType: AnswerType;
+  rigorousness: RigorousnessLevel;
+  chunkSize: number;
+};
+const defaultSettings: PracticeSettings = {
+  quizMode: "both",
+  answerType: "short-answer",
+  rigorousness: "balanced",
+  chunkSize: 7,
+};
+const mergeSettings = (base: PracticeSettings, update: Partial<PracticeSettings>): PracticeSettings => ({
+  ...base,
+  ...update,
+});
+const rigorousnessPresets: Record<RigorousnessLevel, Omit<ChunkedSpacedRepetitionConfig, "chunkSize">> = {
+  relaxed: {
+    masteryTarget: 2,
+    difficultyThreshold: 0.2,
+    difficultyWeight: 0.6,
+    attemptWeight: 0.4,
+  },
+  balanced: {
+    masteryTarget: 3,
+    difficultyThreshold: 0.1,
+    difficultyWeight: 0.7,
+    attemptWeight: 0.3,
+  },
+  intense: {
+    masteryTarget: 4,
+    difficultyThreshold: 0.08,
+    difficultyWeight: 0.8,
+    attemptWeight: 0.2,
+  },
+};
 
 interface PracticeState {
   flashcards: Flashcard[];
   flashcardAttempts: FlashcardAttempt[];
   currentCardIndex: number;
-  quizMode: QuizMode;
-  answerType: AnswerType;
   userAnswer: string;
   showAnswer: boolean;
   score: number;
@@ -32,14 +70,14 @@ interface PracticeState {
   isTermQuestion: boolean;
   isShortAnswerQuestion: boolean;
   isCorrect: boolean;
+  settings: PracticeSettings;
 }
 
 type PracticeAction =
   | { type: "SHUFFLE_CARDS"; cards: Flashcard[] }
   | { type: "SET_FLASHCARD_ATTEMPTS"; attempts: FlashcardAttempt[] }
   | { type: "REPLACE_ATTEMPT"; prevId: number; savedAttempt: FlashcardAttempt }
-  | { type: "SET_QUIZ_MODE"; quizMode: QuizMode }
-  | { type: "SET_ANSWER_TYPE"; answerType: AnswerType }
+  | { type: "SET_SETTINGS"; settings: Partial<PracticeSettings> }
   | { type: "SUBMIT_ANSWER"; isCorrect: boolean; userAnswer: string; attempt: FlashcardAttempt }
   | { type: "NEXT_QUESTION"; algorithm: Algorithm }
   | { type: "PREPARE_QUESTION" }
@@ -61,10 +99,8 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
       updatedAttempts[attemptIndex] = action.savedAttempt;
       return { ...state, flashcardAttempts: updatedAttempts };
     }
-    case "SET_QUIZ_MODE":
-      return { ...state, quizMode: action.quizMode };
-    case "SET_ANSWER_TYPE":
-      return { ...state, answerType: action.answerType };
+    case "SET_SETTINGS":
+      return { ...state, settings: mergeSettings(state.settings, action.settings) };
     case "SUBMIT_ANSWER": {
       const flashcardAttempts = [...state.flashcardAttempts, action.attempt];
 
@@ -85,9 +121,9 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
     }
     case "PREPARE_QUESTION": {
       const isTermQuestion =
-        state.quizMode === "term-to-definition" || (state.quizMode === "both" && Math.random() < 0.5);
+        state.settings.quizMode === "term-to-definition" || (state.settings.quizMode === "both" && Math.random() < 0.5);
       const isShortAnswerQuestion =
-        state.answerType === "short-answer" || (state.answerType === "both" && Math.random() < 0.5);
+        state.settings.answerType === "short-answer" || (state.settings.answerType === "both" && Math.random() < 0.5);
       return {
         ...state,
         userAnswer: "",
@@ -133,8 +169,6 @@ const initialState: PracticeState = {
   flashcards: [],
   flashcardAttempts: [],
   currentCardIndex: 0,
-  quizMode: "both",
-  answerType: "short-answer",
   userAnswer: "",
   showAnswer: false,
   score: 0,
@@ -142,6 +176,7 @@ const initialState: PracticeState = {
   isTermQuestion: true,
   isShortAnswerQuestion: true,
   isCorrect: false,
+  settings: defaultSettings,
 };
 
 function AnswerInput({ handleAnswer }: { handleAnswer: (value: string) => Promise<void> | void }) {
@@ -164,6 +199,44 @@ function AnswerInput({ handleAnswer }: { handleAnswer: (value: string) => Promis
   );
 }
 
+const rigorousnessOptions: RigorousnessLevel[] = ["relaxed", "balanced", "intense"];
+
+function NumberField({
+  id,
+  label,
+  value,
+  onChange,
+  min = 1,
+  max = 50,
+  helper,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  helper?: string;
+}) {
+  return (
+    <div className="sm:col-span-2 ">
+      <div className="flex items-center">
+        <Label htmlFor={id}>{label}</Label>
+        <Input
+          id={id}
+          type="number"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(Math.min(max, Math.max(min, Number(e.target.value) || min)))}
+          className="w-32 mx-4"
+        />
+      </div>
+      {helper ? <span className="text-xs text-muted-foreground">{helper}</span> : null}
+    </div>
+  );
+}
+
 function QuizControls({
   settings,
   onChange,
@@ -171,10 +244,10 @@ function QuizControls({
   settings: PracticeSettings;
   onChange: (update: Partial<PracticeSettings>) => void;
 }) {
-  const { quizMode, answerType } = settings;
+  const { quizMode, answerType, rigorousness, chunkSize } = settings;
 
   return (
-    <div className="flex flex-wrap gap-4 items-center justify-between">
+    <div className="grid gap-6 sm:grid-cols-2">
       <div className="flex items-center space-x-2">
         <Label htmlFor="quiz-mode">Quiz Mode:</Label>
         <select
@@ -201,6 +274,26 @@ function QuizControls({
           <option value="both">Both</option>
         </select>
       </div>
+      <div className="flex items-center space-x-2 sm:col-span-2">
+        <Label htmlFor="rigorousness">Rigorousness:</Label>
+        <select
+          id="rigorousness"
+          value={rigorousness}
+          onChange={(e) => onChange({ rigorousness: e.target.value as RigorousnessLevel })}
+          className="border rounded p-2"
+        >
+          <option value="relaxed">Relaxed</option>
+          <option value="balanced">Balanced</option>
+          <option value="intense">Intense</option>
+        </select>
+      </div>
+      <NumberField
+        id="chunk-size"
+        label="Chunk Size:"
+        value={chunkSize}
+        onChange={(value) => onChange({ chunkSize: value })}
+        helper="How many cards to pull into each rotation."
+      />
     </div>
   );
 }
@@ -253,12 +346,17 @@ function PracticePage() {
   const setId = set?.id ?? null;
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
-  const [draftSettings, setDraftSettings] = useState<PracticeSettings>({
-    quizMode: initialState.quizMode,
-    answerType: initialState.answerType,
-  });
+  const [draftSettings, setDraftSettings] = useState<PracticeSettings>(defaultSettings);
 
-  const algorithm = useMemo(() => new ChunkedSpacedRepetitionAlgorithm(), []);
+  const algorithmConfig = useMemo(
+    () => ({
+      ...rigorousnessPresets[state.settings.rigorousness],
+      chunkSize: state.settings.chunkSize,
+    }),
+    [state.settings.chunkSize, state.settings.rigorousness],
+  );
+  const algorithm = useMemo(() => new ChunkedSpacedRepetitionAlgorithm(algorithmConfig), [algorithmConfig]);
+  const currentSettings = useMemo(() => state.settings, [state.settings]);
 
   const currentCard = state.flashcards[state.currentCardIndex];
   const currentCardAttempts = useMemo(() => {
@@ -282,15 +380,18 @@ function PracticePage() {
     dispatch({ type: "PREPARE_QUESTION" });
   }, [flashcards, algorithm]);
 
-  const applyPreferences = useCallback((settings: PracticeSettings) => {
-    dispatch({ type: "SET_QUIZ_MODE", quizMode: settings.quizMode });
-    dispatch({ type: "SET_ANSWER_TYPE", answerType: settings.answerType });
-    setDraftSettings(settings);
-    dispatch({ type: "PREPARE_QUESTION" });
-  }, []);
+  const applyPreferences = useCallback(
+    (settings: Partial<PracticeSettings>) => {
+      const mergedSettings = mergeSettings(currentSettings, settings);
+      dispatch({ type: "SET_SETTINGS", settings: mergedSettings });
+      setDraftSettings(mergedSettings);
+      dispatch({ type: "PREPARE_QUESTION" });
+    },
+    [currentSettings],
+  );
 
   const updateDraftSettings = useCallback((update: Partial<PracticeSettings>) => {
-    setDraftSettings((prev) => ({ ...prev, ...update }));
+    setDraftSettings((prev) => mergeSettings(prev, update));
   }, []);
 
   useEffect(() => {
@@ -314,7 +415,12 @@ function PracticePage() {
           console.error("Failed to fetch preferences", error);
         }
         if (data) {
-          applyPreferences({ quizMode: data.quiz_mode, answerType: data.answer_type });
+          applyPreferences({
+            quizMode: data.quiz_mode,
+            answerType: data.answer_type,
+            rigorousness: (data.rigorousness ?? undefined) as RigorousnessLevel | undefined,
+            chunkSize: typeof data.chunk_size === "number" ? data.chunk_size : undefined,
+          });
           applied = true;
         }
       }
@@ -327,6 +433,8 @@ function PracticePage() {
             applyPreferences({
               quizMode: parsed.quizMode as QuizMode,
               answerType: parsed.answerType as AnswerType,
+              rigorousness: parsed.rigorousness as RigorousnessLevel | undefined,
+              chunkSize: typeof parsed.chunkSize === "number" ? parsed.chunkSize : undefined,
             });
             applied = true;
           }
@@ -345,9 +453,9 @@ function PracticePage() {
 
   useEffect(() => {
     if (!preferenceStorageKey) return;
-    const payload = JSON.stringify({ quizMode: state.quizMode, answerType: state.answerType });
+    const payload = JSON.stringify(mergeSettings(defaultSettings, currentSettings));
     localStorage.setItem(preferenceStorageKey, payload);
-  }, [preferenceStorageKey, state.answerType, state.quizMode]);
+  }, [currentSettings, preferenceStorageKey]);
 
   useEffect(() => {
     if (flashcards.length > 0 && !hasInitialized.current) {
@@ -463,6 +571,8 @@ function PracticePage() {
           setId,
           quizMode: draftSettings.quizMode,
           answerType: draftSettings.answerType,
+          rigorousness: draftSettings.rigorousness,
+          chunkSize: draftSettings.chunkSize,
           userId: user.id,
         });
       } catch (error) {
@@ -476,9 +586,9 @@ function PracticePage() {
 
   useEffect(() => {
     if (isSettingsOpen) {
-      setDraftSettings({ quizMode: state.quizMode, answerType: state.answerType });
+      setDraftSettings(mergeSettings(defaultSettings, currentSettings));
     }
-  }, [isSettingsOpen, state.answerType, state.quizMode]);
+  }, [currentSettings, isSettingsOpen]);
 
   return (
     <div className="container mx-auto px-4 py-8">
