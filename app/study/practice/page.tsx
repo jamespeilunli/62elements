@@ -722,7 +722,7 @@ function PracticePage() {
                             }
                           }}
                           variant="outline"
-                          className="hover:bg-green-100"
+                          className="hover:light:bg-green-100 hover:dark:bg-green-700"
                         >
                           I Was Right
                         </Button>
@@ -758,7 +758,7 @@ function PracticePage() {
                             }
                           }}
                           variant="outline"
-                          className="hover:bg-red-100"
+                          className="hover:light:bg-red-100 hover:dark:bg-red-900"
                         >
                           I Was Wrong
                         </Button>
