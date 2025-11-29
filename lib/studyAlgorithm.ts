@@ -23,7 +23,8 @@ const DEFAULT_CONFIG: ChunkedSpacedRepetitionConfig = {
 function getCardStats(card: Flashcard, attempts: FlashcardAttempt[]) {
   const cardAttempts = attempts
     .map((attempt, index) => ({ attempt, overallIndex: index }))
-    .filter(({ attempt }) => attempt.flashcardUid === card.uid);
+    .filter(({ attempt }) => attempt.flashcardUid === card.uid)
+    .slice(-10);
 
   if (cardAttempts.length === 0) {
     return { difficulty: 1, totalAttempts: 0, priority: 0.5 };
@@ -42,7 +43,8 @@ function getCardStats(card: Flashcard, attempts: FlashcardAttempt[]) {
     }, 0) / cardAttempts.length;
 
   const recencyFactor = Math.min(10, attempts.length - cardAttempts[cardAttempts.length - 1].overallIndex) / 10;
-  const priority = 0.8 * difficultyFactor + 0.2 * recencyFactor;
+  const randomFactor = Math.random();
+  const priority = 0.7 * difficultyFactor + 0.25 * recencyFactor + 0.05 * randomFactor;
 
   return {
     difficulty: difficultyFactor,
