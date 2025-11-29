@@ -18,6 +18,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { Check, Settings, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, Suspense, useState, useRef } from "react";
 import { getUserSetPreferences, upsertUserSetPreferences } from "@/lib/data";
+import { isShortAnswerCorrect } from "@/lib/answerValidation";
 
 type QuizMode = "term-to-definition" | "definition-to-term" | "both";
 type AnswerType = "multiple-choice" | "short-answer" | "both";
@@ -82,7 +83,8 @@ type PracticeAction =
   | { type: "NEXT_QUESTION"; algorithm: Algorithm }
   | { type: "PREPARE_QUESTION" }
   | { type: "MARK_CORRECT"; attemptId: number }
-  | { type: "MARK_UNSURE"; attemptId: number };
+  | { type: "MARK_UNSURE"; attemptId: number }
+  | { type: "MARK_INCORRECT"; attemptId: number };
 
 function practiceReducer(state: PracticeState, action: PracticeAction): PracticeState {
   switch (action.type) {
@@ -158,6 +160,23 @@ function practiceReducer(state: PracticeState, action: PracticeAction): Practice
       return {
         ...state,
         flashcardAttempts: updatedAttempts,
+      };
+    }
+    case "MARK_INCORRECT": {
+      const attemptIndex = state.flashcardAttempts.findIndex((attempt) => attempt.id === action.attemptId);
+
+      if (attemptIndex === -1) return state;
+
+      const updatedAttempts = [...state.flashcardAttempts];
+      const prevResult = updatedAttempts[attemptIndex].result;
+      updatedAttempts[attemptIndex] = { ...updatedAttempts[attemptIndex], result: "incorrect" };
+
+      const adjustedScore = prevResult === "correct" ? Math.max(0, state.score - 1) : state.score;
+
+      return {
+        ...state,
+        flashcardAttempts: updatedAttempts,
+        score: adjustedScore,
       };
     }
     default:
@@ -488,9 +507,7 @@ function PracticePage() {
 
   const validateAnswer = useCallback(
     (guess: string) => {
-      const normalize = (str: string) => str.normalize("NFKD").replace(/−/g, "-").toLowerCase().trim();
-
-      return normalize(guess) === normalize(correctAnswer);
+      return isShortAnswerCorrect(guess, correctAnswer);
     },
     [correctAnswer],
   );
@@ -642,59 +659,112 @@ function PracticePage() {
               )}
               {!state.showAnswer && state.isShortAnswerQuestion && <AnswerInput handleAnswer={handleAnswer} />}
               {state.showAnswer && (
-                <div className="mt-4">
-                  <p className="font-semibold">
-                    {state.isCorrect ? (
-                      <span className="text-green-600 flex items-center">
-                        <Check className="h-5 w-5 mr-2" /> Correct!
-                      </span>
-                    ) : (
-                      <span className="text-red-600 flex items-center">
-                        <X className="h-5 w-5 mr-2" />
-                        {state.userAnswer ? `${state.userAnswer} is incorrect. ` : ""}
-                        The correct answer is: {correctAnswer}
-                      </span>
-                    )}
-                  </p>
-                  <Button onClick={nextQuestion} className="mt-4">
-                    Next Question
-                  </Button>
-                  {!state.isCorrect && (
-                    <Button
-                      onClick={() => {
-                        const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
-                        if (lastAttempt) {
-                          dispatch({ type: "MARK_CORRECT", attemptId: lastAttempt.id });
-                          if (lastAttempt.id > 0) {
-                            updateFlashcardAttemptResult(lastAttempt.id, "correct");
-                          }
-                          nextQuestion();
-                        }
-                      }}
-                      className="ml-4"
-                      variant="outline"
-                    >
-                      I Was Right
-                    </Button>
+                <div className="mt-4 space-y-3">
+                  {state.isCorrect ? (
+                    <div className="flex items-start gap-3 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+                      <Check className="h-5 w-5 mt-0.5 text-green-600" />
+                      <div className="space-y-1">
+                        <div className="font-semibold text-green-800">Correct</div>
+                        <div className="text-green-800">
+                          <span className="font-medium">Your answer:</span>{" "}
+                          {state.userAnswer ? state.userAnswer : "(blank)"}
+                        </div>
+                        <div className="text-green-800">
+                          <span className="font-medium">Expected:</span> {correctAnswer}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                      <X className="h-5 w-5 mt-0.5 text-red-600" />
+                      <div className="space-y-1">
+                        <div className="font-semibold text-red-800">Incorrect</div>
+                        {state.userAnswer ? (
+                          <div className="text-red-800">
+                            <span className="font-medium">Your answer:</span> {state.userAnswer}
+                          </div>
+                        ) : null}
+                        <div className="text-red-800">
+                          <span className="font-medium">Expected:</span> {correctAnswer}
+                        </div>
+                      </div>
+                    </div>
                   )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button onClick={nextQuestion}>Next Question</Button>
+                    {!state.isCorrect && (
+                      <>
+                        <Button
+                          onClick={() => {
+                            const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
+                            if (lastAttempt) {
+                              dispatch({ type: "MARK_UNSURE", attemptId: lastAttempt.id });
+                              if (lastAttempt.id > 0) {
+                                updateFlashcardAttemptResult(lastAttempt.id, "unsure");
+                              }
+                              nextQuestion();
+                            }
+                          }}
+                          variant="outline"
+                        >
+                          I Was Unsure
+                        </Button>
 
-                  {state.isCorrect && (
-                    <Button
-                      onClick={() => {
-                        const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
-                        if (lastAttempt) {
-                          dispatch({ type: "MARK_UNSURE", attemptId: lastAttempt.id });
-                          if (lastAttempt.id > 0) {
-                            updateFlashcardAttemptResult(lastAttempt.id, "unsure");
-                          }
-                          nextQuestion();
-                        }
-                      }}
-                      className="ml-4"
-                    >
-                      I Was Unsure
-                    </Button>
-                  )}
+                        <Button
+                          onClick={() => {
+                            const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
+                            if (lastAttempt) {
+                              dispatch({ type: "MARK_CORRECT", attemptId: lastAttempt.id });
+                              if (lastAttempt.id > 0) {
+                                updateFlashcardAttemptResult(lastAttempt.id, "correct");
+                              }
+                              nextQuestion();
+                            }
+                          }}
+                          variant="outline"
+                          className="hover:bg-green-100"
+                        >
+                          I Was Right
+                        </Button>
+                      </>
+                    )}
+
+                    {state.isCorrect && (
+                      <>
+                        <Button
+                          onClick={() => {
+                            const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
+                            if (lastAttempt) {
+                              dispatch({ type: "MARK_UNSURE", attemptId: lastAttempt.id });
+                              if (lastAttempt.id > 0) {
+                                updateFlashcardAttemptResult(lastAttempt.id, "unsure");
+                              }
+                              nextQuestion();
+                            }
+                          }}
+                          variant="outline"
+                        >
+                          I Was Unsure
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const lastAttempt = currentCardAttempts[currentCardAttempts.length - 1];
+                            if (lastAttempt) {
+                              dispatch({ type: "MARK_INCORRECT", attemptId: lastAttempt.id });
+                              if (lastAttempt.id > 0) {
+                                updateFlashcardAttemptResult(lastAttempt.id, "incorrect");
+                              }
+                              nextQuestion();
+                            }
+                          }}
+                          variant="outline"
+                          className="hover:bg-red-100"
+                        >
+                          I Was Wrong
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>
