@@ -4,11 +4,15 @@ import { useFlashcardData, Flashcard, FlashcardAttempt } from "../../hooks/useFl
 import { getDifficultyString } from "../../lib/studyAlgorithm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, PenTool, Brain, /*Puzzle,*/ Star, Edit } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starred"];
 
@@ -111,6 +115,190 @@ const FlashcardsDisplay = (props: FlashcardProps) => {
   );
 };
 
+const PracticeSummary = (props: FlashcardProps) => {
+  const { flashcards, flashcardAttempts } = props;
+  type DifficultAttempt = {
+    card: Flashcard;
+    stats: {
+      lastStudied: string;
+      totalAttempts: number;
+      todaysAttempts: number;
+      todaysMisses: number;
+      todaysCorrect: number;
+      lastResult: FlashcardAttempt["result"] | null;
+    };
+    recentMissTime: number;
+  };
+
+  const now = new Date();
+  const todayString = now.toDateString();
+
+  const attemptCounts = flashcardAttempts.reduce(
+    (acc, attempt) => {
+      const dateString = new Date(attempt.attemptedAt).toDateString();
+      acc.total += 1;
+      if (dateString === todayString) acc.today += 1;
+      return acc;
+    },
+    { total: 0, today: 0 },
+  );
+
+  const totalAttempts = attemptCounts.total;
+  const todayAttempts = attemptCounts.today;
+  const priorAttempts = Math.max(totalAttempts - todayAttempts, 0);
+  const totalCorrect = flashcardAttempts.filter((attempt) => attempt.result === "correct").length;
+  const accuracy = totalAttempts === 0 ? 0 : Math.round((totalCorrect / totalAttempts) * 100);
+
+  const todayDeltaPercent =
+    priorAttempts === 0 ? (todayAttempts > 0 ? 100 : 0) : Math.round((todayAttempts / priorAttempts) * 100);
+
+  const formatAgo = (dateString: string) => {
+    const diffMs = now.getTime() - new Date(dateString).getTime();
+    const minutes = Math.floor(diffMs / (1000 * 60));
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  const recentlyDifficult: DifficultAttempt[] = useMemo(() => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    const attemptsByCard = new Map<number, FlashcardAttempt[]>();
+
+    // Group attempts by card for simpler calculations.
+    flashcardAttempts.forEach((attempt) => {
+      const attemptsForCard = attemptsByCard.get(attempt.flashcardUid) ?? [];
+      attemptsForCard.push(attempt);
+      attemptsByCard.set(attempt.flashcardUid, attemptsForCard);
+    });
+
+    const difficultAttempts: DifficultAttempt[] = [];
+
+    attemptsByCard.forEach((attempts, cardUid) => {
+      const card = flashcards.find((c) => c.uid === cardUid);
+      if (!card) return;
+
+      const orderedAttempts = [...attempts].sort(
+        (a, b) => new Date(a.attemptedAt).getTime() - new Date(b.attemptedAt).getTime(),
+      );
+      const lastAttempt = orderedAttempts.at(-1);
+      const recentMiss = [...orderedAttempts]
+        .reverse()
+        .find((attempt) => attempt.result !== "correct" && new Date(attempt.attemptedAt).getTime() >= cutoff);
+      if (!recentMiss) return;
+
+      const todaysAttempts = orderedAttempts.filter(
+        (attempt) => new Date(attempt.attemptedAt).toDateString() === todayString,
+      );
+      const todaysMisses = todaysAttempts.filter((attempt) => attempt.result !== "correct").length;
+      const todaysCorrect = todaysAttempts.filter((attempt) => attempt.result === "correct").length;
+
+      difficultAttempts.push({
+        card,
+        stats: {
+          lastStudied: lastAttempt ? formatAgo(lastAttempt.attemptedAt) : "N/A",
+          totalAttempts: orderedAttempts.length,
+          todaysAttempts: todaysAttempts.length,
+          todaysMisses,
+          todaysCorrect,
+          lastResult: lastAttempt?.result ?? null,
+        },
+        recentMissTime: new Date(recentMiss.attemptedAt).getTime(),
+      });
+    });
+
+    return difficultAttempts.sort((a, b) => b.recentMissTime - a.recentMissTime).slice(0, 10);
+  }, [flashcardAttempts, flashcards, todayString]);
+
+  return (
+    <Card className="mb-10">
+      <CardContent className="p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Total attempts</p>
+            <p className="text-2xl font-semibold">{totalAttempts}</p>
+            <p className="text-xs text-muted-foreground mt-1">All time practice for this set</p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Today&apos;s attempts</p>
+            <div className="flex items-center gap-2">
+              <p className="text-2xl font-semibold">{todayAttempts}</p>
+              <span
+                className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                  todayDeltaPercent > 0
+                    ? "text-emerald-700 bg-emerald-50"
+                    : todayDeltaPercent === 0
+                      ? "text-muted-foreground bg-muted/50"
+                      : "text-amber-700 bg-amber-50"
+                }`}
+              >
+                {todayDeltaPercent > 0 ? "+" : ""}
+                {todayDeltaPercent}%
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">vs all previous attempts: {priorAttempts}</p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Total Accuracy</p>
+            <p className="text-2xl font-semibold">{accuracy}%</p>
+            <Progress value={accuracy} className="mt-2 h-3 bg-muted [&>div]:bg-emerald-500" />
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold">Recently tricky cards</h3>
+            <p className="text-xs text-muted-foreground">Pulled from the latest misses/unsures</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {recentlyDifficult.length === 0 ? (
+              <p className="text-sm text-muted-foreground">You haven&apos;t flagged any tough cards recently.</p>
+            ) : (
+              <TooltipProvider delayDuration={150}>
+                {recentlyDifficult.map(({ card, stats }) => (
+                  <Tooltip key={card.uid}>
+                    <TooltipTrigger asChild>
+                      <Badge variant="secondary" className="flex items-center gap-2 px-3 py-2 cursor-pointer">
+                        <span className="font-medium">{card.term}</span>
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent className="space-y-1">
+                      <p className="text-sm font-semibold">{card.term}</p>
+                      <p className="text-xs text-muted-foreground">Last studied: {stats.lastStudied}</p>
+                      <p className="text-xs text-muted-foreground">Total attempts: {stats.totalAttempts}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Today: {stats.todaysAttempts} (
+                        <span className="text-emerald-600 font-medium">{stats.todaysCorrect} correct</span>,{" "}
+                        <span className="text-red-600 font-medium">{stats.todaysMisses} miss/unsure</span>)
+                      </p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Last result:{" "}
+                        <span
+                          className={` ${
+                            stats.lastResult === "correct"
+                              ? "text-emerald-600"
+                              : stats.lastResult
+                                ? "text-red-600"
+                                : "text-muted-foreground"
+                          }`}
+                        >
+                          {stats.lastResult ? stats.lastResult : "N/A"}
+                        </span>
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+              </TooltipProvider>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const FlashcardTable = (props: FlashcardProps) => {
   const flashcards = props.flashcards;
   const { flashcardAttempts } = props;
@@ -196,6 +384,7 @@ const FlashcardTable = (props: FlashcardProps) => {
 
 const StudySet = () => {
   const { flashcards, flashcardAttempts, status, set } = useFlashcardData();
+  const { user } = useAuth();
 
   const [isGlowing, setIsGlowing] = useState(true);
 
@@ -235,6 +424,7 @@ const StudySet = () => {
             </Button>
           </div>
 
+          {user && <PracticeSummary flashcards={flashcards} flashcardAttempts={flashcardAttempts} />}
           <FlashcardTable flashcards={flashcards} flashcardAttempts={flashcardAttempts} />
         </div>
       )}
