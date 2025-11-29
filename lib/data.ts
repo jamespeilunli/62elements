@@ -44,13 +44,15 @@ export type UserSetPreference = {
   set_id: number;
   quiz_mode: "term-to-definition" | "definition-to-term" | "both";
   answer_type: "multiple-choice" | "short-answer" | "both";
+  rigorousness: "relaxed" | "balanced" | "intense" | null;
+  chunk_size: number | null;
   updated_at: string;
 };
 
 export async function getUserSetPreferences(setId: number) {
   const { data, error } = await supabase
     .from("user_set_preferences")
-    .select("user_id, set_id, quiz_mode, answer_type, updated_at")
+    .select("user_id, set_id, quiz_mode, answer_type, rigorousness, chunk_size, updated_at")
     .eq("set_id", setId)
     .maybeSingle();
 
@@ -61,11 +63,15 @@ export async function upsertUserSetPreferences({
   setId,
   quizMode,
   answerType,
+  rigorousness,
+  chunkSize,
   userId,
 }: {
   setId: number;
   quizMode: UserSetPreference["quiz_mode"];
   answerType: UserSetPreference["answer_type"];
+  rigorousness?: UserSetPreference["rigorousness"];
+  chunkSize?: UserSetPreference["chunk_size"];
   userId: string;
 }) {
   const { data, error } = await supabase
@@ -76,10 +82,12 @@ export async function upsertUserSetPreferences({
         set_id: setId,
         quiz_mode: quizMode,
         answer_type: answerType,
+        rigorousness: rigorousness ?? null,
+        chunk_size: chunkSize ?? null,
       },
       { onConflict: "user_id,set_id" },
     )
-    .select("user_id, set_id, quiz_mode, answer_type, updated_at")
+    .select("user_id, set_id, quiz_mode, answer_type, rigorousness, chunk_size, updated_at")
     .single();
 
   return { data: data as UserSetPreference, error };
