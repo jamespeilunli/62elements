@@ -208,6 +208,7 @@ function NumberField({
   onChange,
   min = 1,
   max = 50,
+  step = 1,
   helper,
 }: {
   id: string;
@@ -216,10 +217,11 @@ function NumberField({
   onChange: (value: number) => void;
   min?: number;
   max?: number;
+  step?: number;
   helper?: string;
 }) {
   return (
-    <div className="sm:col-span-2 ">
+    <div className="sm:col-span-2">
       <div className="flex items-center">
         <Label htmlFor={id}>{label}</Label>
         <Input
@@ -228,6 +230,7 @@ function NumberField({
           min={min}
           max={max}
           value={value}
+          step={step}
           onChange={(e) => onChange(Math.min(max, Math.max(min, Number(e.target.value) || min)))}
           className="w-32 mx-4"
         />
@@ -537,6 +540,8 @@ function PracticePage() {
   }, [algorithm]);
 
   useEffect(() => {
+    if (isSettingsOpen) return;
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (state.showAnswer) {
         if (event.key === " " || event.key === "Enter") {
@@ -554,7 +559,7 @@ function PracticePage() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [state.showAnswer, state.isShortAnswerQuestion, options, handleAnswer, nextQuestion]);
+  }, [isSettingsOpen, state.showAnswer, state.isShortAnswerQuestion, options, handleAnswer, nextQuestion]);
 
   const savePreferences = useCallback(async () => {
     if (setId === null) {
