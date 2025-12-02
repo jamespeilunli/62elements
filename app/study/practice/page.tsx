@@ -518,7 +518,9 @@ function PracticePage() {
 
       const isCorrect = validateAnswer(answer);
       const result: FlashcardAttemptResult = isCorrect ? "correct" : "incorrect";
-      const durationMs = questionStartRef.current ? Math.max(0, performance.now() - questionStartRef.current) : 0;
+      const durationMs = Math.round(
+        questionStartRef.current ? Math.max(0, performance.now() - questionStartRef.current) : 0,
+      );
 
       const localAttempt: FlashcardAttempt = {
         id: -Date.now(), // used in REPLACE_ATTEMPT in order to know what row to replace with the proper id
