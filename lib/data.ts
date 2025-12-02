@@ -24,13 +24,34 @@ export async function getSetById(setId: number) {
 }
 
 export async function getFlashcardAttemptsBySetId(setId: number) {
-  const { data, error } = await supabase
-    .from("flashcard_attempts")
-    .select("id, flashcard_uid, attempted_at, result, response_ms")
-    .eq("set_id", setId)
-    .order("attempted_at", { ascending: true });
+  const pageSize = 1000;
+  let from = 0;
+  let allAttempts: any[] = [];
 
-  return { data, error };
+  // Supabase enforces a 1k row limit per request; paginate to fetch everything.
+  while (true) {
+    const { data, error } = await supabase
+      .from("flashcard_attempts")
+      .select("id, flashcard_uid, attempted_at, result, response_ms")
+      .eq("set_id", setId)
+      .order("attempted_at", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      return { data: allAttempts, error };
+    }
+
+    const pageData = data ?? [];
+    allAttempts.push(...pageData);
+
+    if (pageData.length < pageSize) {
+      break;
+    }
+
+    from += pageSize;
+  }
+
+  return { data: allAttempts, error: null };
 }
 
 export async function getVisibleSets() {
