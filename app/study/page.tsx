@@ -120,14 +120,14 @@ const PracticeSummary = (props: FlashcardProps) => {
   type DifficultAttempt = {
     card: Flashcard;
     stats: {
-      lastStudied: string;
+      lastStudied: number;
       totalAttempts: number;
+      totalMisses: number;
       todaysAttempts: number;
       todaysMisses: number;
       todaysCorrect: number;
       lastResult: FlashcardAttempt["result"] | null;
     };
-    recentMissTime: number;
   };
 
   const now = new Date();
@@ -152,8 +152,9 @@ const PracticeSummary = (props: FlashcardProps) => {
   const todayDeltaPercent =
     priorAttempts === 0 ? (todayAttempts > 0 ? 100 : 0) : Math.round((todayAttempts / priorAttempts) * 100);
 
-  const formatAgo = (dateString: string) => {
-    const diffMs = now.getTime() - new Date(dateString).getTime();
+  const formatAgo = (timeMs: number) => {
+    if (timeMs <= 0) return "never";
+    const diffMs = now.getTime() - timeMs;
     const minutes = Math.floor(diffMs / (1000 * 60));
     if (minutes < 1) return "just now";
     if (minutes < 60) return `${minutes}m ago`;
@@ -163,8 +164,7 @@ const PracticeSummary = (props: FlashcardProps) => {
     return `${days}d ago`;
   };
 
-  const recentlyDifficult: DifficultAttempt[] = useMemo(() => {
-    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const mostMissedCards: DifficultAttempt[] = useMemo(() => {
     const attemptsByCard = new Map<number, FlashcardAttempt[]>();
 
     // Group attempts by card for simpler calculations.
@@ -184,10 +184,8 @@ const PracticeSummary = (props: FlashcardProps) => {
         (a, b) => new Date(a.attemptedAt).getTime() - new Date(b.attemptedAt).getTime(),
       );
       const lastAttempt = orderedAttempts.at(-1);
-      const recentMiss = [...orderedAttempts]
-        .reverse()
-        .find((attempt) => attempt.result !== "correct" && new Date(attempt.attemptedAt).getTime() >= cutoff);
-      if (!recentMiss) return;
+      const totalMisses = orderedAttempts.filter((attempt) => attempt.result !== "correct").length;
+      if (totalMisses === 0) return;
 
       const todaysAttempts = orderedAttempts.filter(
         (attempt) => new Date(attempt.attemptedAt).toDateString() === todayString,
@@ -198,18 +196,24 @@ const PracticeSummary = (props: FlashcardProps) => {
       difficultAttempts.push({
         card,
         stats: {
-          lastStudied: lastAttempt ? formatAgo(lastAttempt.attemptedAt) : "N/A",
+          lastStudied: lastAttempt ? new Date(lastAttempt.attemptedAt).getTime() : 0,
           totalAttempts: orderedAttempts.length,
+          totalMisses,
           todaysAttempts: todaysAttempts.length,
           todaysMisses,
           todaysCorrect,
           lastResult: lastAttempt?.result ?? null,
         },
-        recentMissTime: new Date(recentMiss.attemptedAt).getTime(),
       });
     });
 
-    return difficultAttempts.sort((a, b) => b.recentMissTime - a.recentMissTime).slice(0, 10);
+    const topMissed = difficultAttempts
+      .sort((a, b) => {
+        return b.stats.totalMisses - a.stats.totalMisses;
+      })
+      .slice(0, 10);
+
+    return topMissed.sort((a, b) => b.stats.lastStudied - a.stats.lastStudied);
   }, [flashcardAttempts, flashcards, todayString]);
 
   return (
@@ -249,15 +253,15 @@ const PracticeSummary = (props: FlashcardProps) => {
 
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold">Recently tricky cards</h3>
-            <p className="text-xs text-muted-foreground">Pulled from the latest misses/unsures</p>
+            <h3 className="text-lg font-semibold">Most missed cards</h3>
+            <p className="text-xs text-muted-foreground">Ranked by all-time miss/unsure count</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {recentlyDifficult.length === 0 ? (
-              <p className="text-sm text-muted-foreground">You haven&apos;t flagged any tough cards recently.</p>
+            {mostMissedCards.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No misses recorded yet.</p>
             ) : (
               <TooltipProvider delayDuration={150}>
-                {recentlyDifficult.map(({ card, stats }) => (
+                {mostMissedCards.map(({ card, stats }) => (
                   <Tooltip key={card.uid}>
                     <TooltipTrigger asChild>
                       <Badge variant="secondary" className="flex items-center gap-2 px-3 py-2 cursor-pointer">
@@ -266,8 +270,14 @@ const PracticeSummary = (props: FlashcardProps) => {
                     </TooltipTrigger>
                     <TooltipContent className="space-y-1">
                       <p className="text-sm font-semibold">{card.term}</p>
-                      <p className="text-xs text-muted-foreground">Last studied: {stats.lastStudied}</p>
-                      <p className="text-xs text-muted-foreground">Total attempts: {stats.totalAttempts}</p>
+                      <p className="text-xs text-muted-foreground">Last studied: {formatAgo(stats.lastStudied)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        All time: {stats.totalAttempts} (
+                        <span className="text-emerald-600 font-medium">
+                          {stats.totalAttempts - stats.totalMisses} correct
+                        </span>
+                        , <span className="text-red-600 font-medium">{stats.totalMisses} miss/unsure</span>)
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Today: {stats.todaysAttempts} (
                         <span className="text-emerald-600 font-medium">{stats.todaysCorrect} correct</span>,{" "}
