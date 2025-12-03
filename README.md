@@ -2,6 +2,8 @@
 
 Intuitive and lightweight flashcard app using Next.js and Supabase.
 
+Try it out at [62elements.vercel.app](https://62elements.vercel.app/)!
+
 ## Features/Todo
 
 - [x] flashcard library
