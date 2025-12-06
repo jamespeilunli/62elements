@@ -211,7 +211,7 @@ const PracticeSummary = (props: FlashcardProps) => {
       .sort((a, b) => {
         return b.stats.totalMisses - a.stats.totalMisses;
       })
-      .slice(0, 10);
+      .slice(0, 20);
 
     return topMissed.sort((a, b) => b.stats.lastStudied - a.stats.lastStudied);
   }, [flashcardAttempts, flashcards, todayString]);
