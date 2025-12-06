@@ -41,22 +41,19 @@ const mergeSettings = (base: PracticeSettings, update: Partial<PracticeSettings>
 });
 const rigorousnessPresets: Record<RigorousnessLevel, Omit<ChunkedSpacedRepetitionConfig, "chunkSize">> = {
   relaxed: {
-    masteryTarget: 1,
     difficultyThreshold: 0.2,
     difficultyWeight: 0.6,
     attemptWeight: 0.4,
   },
   balanced: {
-    masteryTarget: 2,
     difficultyThreshold: 0.1,
-    difficultyWeight: 0.7,
-    attemptWeight: 0.3,
-  },
-  intense: {
-    masteryTarget: 3,
-    difficultyThreshold: 0.08,
     difficultyWeight: 0.8,
     attemptWeight: 0.2,
+  },
+  intense: {
+    difficultyThreshold: 0.08,
+    difficultyWeight: 0.9,
+    attemptWeight: 0.1,
   },
 };
 

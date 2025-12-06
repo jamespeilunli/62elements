@@ -6,7 +6,6 @@ export interface Algorithm {
 
 export type ChunkedSpacedRepetitionConfig = {
   chunkSize: number;
-  masteryTarget: number;
   difficultyThreshold: number;
   difficultyWeight: number;
   attemptWeight: number;
@@ -14,42 +13,63 @@ export type ChunkedSpacedRepetitionConfig = {
 
 const DEFAULT_CONFIG: ChunkedSpacedRepetitionConfig = {
   chunkSize: 7,
-  masteryTarget: 3,
   difficultyThreshold: 0.1,
-  difficultyWeight: 0.7,
-  attemptWeight: 0.3,
+  difficultyWeight: 0.9,
+  attemptWeight: 0.1,
 };
 
 function getCardStats(card: Flashcard, attempts: FlashcardAttempt[]) {
-  const cardAttempts = attempts
-    .map((attempt, index) => ({ attempt, overallIndex: index }))
-    .filter(({ attempt }) => attempt.flashcardUid === card.uid)
-    .slice(-10);
+  const allCardAttempts = attempts
+    .map((attempt, overallIndex) => ({ attempt, overallIndex }))
+    .filter(({ attempt }) => attempt.flashcardUid === card.uid);
 
-  if (cardAttempts.length === 0) {
-    return { difficulty: 1, totalAttempts: 0, priority: 0.5 };
+  const cardAttempts = allCardAttempts.slice(-5);
+
+  if (allCardAttempts.length === 0) {
+    return { difficulty: 0.0, totalAttempts: 0, totalMissedAttempts: 0, priority: 0.5, recency: Infinity };
   }
 
-  const cardAttemptRange = cardAttempts[cardAttempts.length - 1].overallIndex - cardAttempts[0].overallIndex;
+  const totalMissedAttempts = allCardAttempts.reduce(
+    (count, { attempt }) => (attempt.result === "incorrect" ? count + 1 : count),
+    0,
+  );
 
-  const difficultyFactor =
-    cardAttempts.reduce((acc, { attempt, overallIndex }, index) => {
-      const timeFactor =
-        cardAttempts.length === 1 ? 1 : (overallIndex - cardAttempts[0].overallIndex) / cardAttemptRange;
-      const speedFactor = Math.min(1, (attempt.responseMs ?? 0) / 10000);
-      const accuracyFactor = attempt.result === "incorrect" ? 1 : attempt.result === "unsure" ? 0.5 : 0;
-      const value = timeFactor * (0.9 * accuracyFactor + 0.1 * speedFactor);
-      return acc + value;
-    }, 0) / cardAttempts.length;
+  const lastOverallIndex = cardAttempts[cardAttempts.length - 1].overallIndex;
+  const recency = Math.max(0, attempts.length - 1 - lastOverallIndex);
 
-  const recencyFactor = Math.min(10, attempts.length - cardAttempts[cardAttempts.length - 1].overallIndex) / 10;
+  const n = cardAttempts.length;
+  let weightedSum = 0;
+  let weightTotal = 0;
+
+  cardAttempts.forEach(({ attempt }, idx) => {
+    const recencyPos = n === 1 ? 1 : idx / (n - 1);
+
+    const weight = 0.2 + 0.8 * recencyPos; // oldest ≈ 0.3, newest = 1.0
+
+    const accuracyScore = attempt.result === "incorrect" ? 1 : attempt.result === "unsure" ? 0.6 : 0;
+
+    const seconds = (attempt.responseMs ?? 0) / 1000;
+    const speedScore = Math.min(1, seconds / 10);
+
+    const attemptDifficulty = 0.95 * accuracyScore + 0.05 * speedScore;
+
+    weightedSum += weight * attemptDifficulty;
+    weightTotal += weight;
+  });
+
+  const difficultyFactor = weightTotal > 0 ? weightedSum / weightTotal : 0;
+
+  const recencyFactor = Math.min(recency / 20, 1);
+
   const randomFactor = Math.random();
-  const priority = 0.7 * difficultyFactor + 0.25 * recencyFactor + 0.05 * randomFactor;
+  const priority = recencyFactor === 0 ? 0 : 0.75 * difficultyFactor + 0.25 * recencyFactor + 0.05 * randomFactor;
 
   return {
     difficulty: difficultyFactor,
-    totalAttempts: cardAttempts.length,
+    totalAttempts: allCardAttempts.length,
+    totalMissedAttempts,
     priority,
+    recency,
   };
 }
 
@@ -65,9 +85,9 @@ export function getDifficultyString(card: Flashcard, attempts: FlashcardAttempt[
 }
 
 export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
-  private inReview: boolean = false;
   private currentChunk: Flashcard[] = [];
   private config: ChunkedSpacedRepetitionConfig;
+  private inReview: boolean = false;
 
   constructor(config: Partial<ChunkedSpacedRepetitionConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -76,52 +96,70 @@ export class ChunkedSpacedRepetitionAlgorithm implements Algorithm {
   setConfig(config: Partial<ChunkedSpacedRepetitionConfig>) {
     this.config = { ...this.config, ...config };
     this.currentChunk = [];
-    this.inReview = false;
   }
 
   nextQuestion(flashcards: Flashcard[], flashcardAttempts: FlashcardAttempt[]): number {
     const chunkSize = Math.min(this.config.chunkSize, flashcards.length);
+    const hasUnlearnedInChunk = this.chunkHasUnlearnedWords(this.currentChunk, flashcardAttempts);
 
-    if (
-      this.currentChunk.length === 0 ||
-      this.currentChunk.length > chunkSize ||
-      !this.chunkHasUnlearnedWords(this.currentChunk, flashcardAttempts)
-    ) {
+    const needsNewChunk =
+      this.currentChunk.length === 0 || this.currentChunk.length > chunkSize || !hasUnlearnedInChunk;
+
+    if (needsNewChunk) {
       this.inReview = !this.inReview;
-      this.currentChunk = this.buildChunk(flashcards, flashcardAttempts, chunkSize);
+
+      const reviewPool = this.inReview ? this.findReviewCards(flashcards, flashcardAttempts, chunkSize) : [];
+      this.currentChunk = this.buildChunk(flashcards, flashcardAttempts, chunkSize, reviewPool);
     }
 
     const selectedId = this.nextQuestionFromChunk(this.currentChunk, flashcardAttempts);
     return flashcards.findIndex((card) => card.uid === selectedId);
   }
 
-  private findReviewCards(flashcards: Flashcard[], attempts: FlashcardAttempt[]): Flashcard[] {
-    return flashcards.filter((card) => getCardStats(card, attempts).totalAttempts > 0);
-  }
-
-  private buildChunk(flashcards: Flashcard[], attempts: FlashcardAttempt[], chunkSize: number): Flashcard[] {
-    const pool = this.inReview ? this.findReviewCards(flashcards, attempts) : flashcards;
-    const source = pool.length > 0 ? pool : flashcards;
-
-    const scoredCards = source
-      .map((card) => ({ card, score: this.getChunkScore(card, attempts) }))
-      .sort((a, b) => b.score - a.score)
+  private findReviewCards(flashcards: Flashcard[], attempts: FlashcardAttempt[], chunkSize: number): Flashcard[] {
+    return flashcards
+      .map((card) => ({ card, stats: getCardStats(card, attempts) }))
+      .filter(({ stats }) => stats.totalAttempts > 0 && stats.totalMissedAttempts > 1)
+      .sort((a, b) => b.stats.recency - a.stats.recency)
       .slice(0, chunkSize)
       .map(({ card }) => card);
+  }
 
-    return scoredCards;
+  private buildChunk(
+    flashcards: Flashcard[],
+    attempts: FlashcardAttempt[],
+    chunkSize: number,
+    reviewPool: Flashcard[],
+  ): Flashcard[] {
+    const source = reviewPool.length > 0 ? reviewPool : flashcards;
+
+    const cardsWithStats = source.map((card, index) => ({ card, stats: getCardStats(card, attempts), index }));
+    const guaranteedNewCards = cardsWithStats
+      .filter(({ stats }) => stats.totalAttempts === 0)
+      .slice(0, Math.min(2, chunkSize));
+
+    const remainingSlots = chunkSize - guaranteedNewCards.length;
+
+    const scoredCards = cardsWithStats
+      .filter(({ card }) => !guaranteedNewCards.some(({ card: newCard }) => newCard.uid === card.uid))
+      .map(({ card }) => ({ card, score: this.getChunkScore(card, attempts) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, remainingSlots)
+      .map(({ card }) => card);
+
+    return [...guaranteedNewCards.map(({ card }) => card), ...scoredCards];
   }
 
   private getChunkScore(card: Flashcard, attempts: FlashcardAttempt[]): number {
     const stats = getCardStats(card, attempts);
-    const attemptScore = Math.max(0, this.config.masteryTarget - stats.totalAttempts) / this.config.masteryTarget;
+    const attemptScore = Math.max(0, 2 - stats.totalAttempts) / 2;
     return this.config.difficultyWeight * stats.difficulty + this.config.attemptWeight * attemptScore;
   }
 
   private chunkHasUnlearnedWords(chunk: Flashcard[], attempts: FlashcardAttempt[]): boolean {
     return chunk.some((card) => {
       const stats = getCardStats(card, attempts);
-      return stats.totalAttempts < this.config.masteryTarget || stats.difficulty > this.config.difficultyThreshold;
+      return stats.totalAttempts < 1 || stats.recency > 10 || stats.difficulty > this.config.difficultyThreshold;
     });
   }
 
