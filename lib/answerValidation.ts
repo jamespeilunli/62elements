@@ -8,6 +8,13 @@ const normalizeAnswerText = (value: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const normalizeStrictAnswerText = (value: string) =>
+  value
+    .normalize("NFKD")
+    .replace(/−/g, "-")
+    .toLowerCase()
+    .trim();
+
 const levenshteinDistance = (a: string, b: string) => {
   if (a === b) return 0;
   if (!a.length) return b.length;
@@ -62,7 +69,12 @@ const sharesKeyWord = (guess: string, target: string) => {
   return targetWords.some((word) => word.length >= 4 && guessWords.has(word));
 };
 
-export const isShortAnswerCorrect = (guess: string, correctAnswer: string) => {
+export const isShortAnswerCorrect = (guess: string, correctAnswer: string, fuzzyMatching = true) => {
+  if (!fuzzyMatching) {
+    const normalizedGuess = normalizeStrictAnswerText(guess);
+    return Boolean(normalizedGuess) && normalizedGuess === normalizeStrictAnswerText(correctAnswer);
+  }
+
   const normalizedGuess = normalizeAnswerText(guess);
   const possibleAnswers = splitAlternativeAnswers(correctAnswer);
 

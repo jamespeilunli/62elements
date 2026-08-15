@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import BackLink from "@/components/back-link";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -28,12 +29,14 @@ type PracticeSettings = {
   answerType: AnswerType;
   rigorousness: RigorousnessLevel;
   chunkSize: number;
+  fuzzyMatching: boolean;
 };
 const defaultSettings: PracticeSettings = {
   quizMode: "both",
   answerType: "short-answer",
   rigorousness: "balanced",
   chunkSize: 7,
+  fuzzyMatching: true,
 };
 const mergeSettings = (base: PracticeSettings, update: Partial<PracticeSettings>): PracticeSettings => ({
   ...base,
@@ -263,7 +266,7 @@ function QuizControls({
   settings: PracticeSettings;
   onChange: (update: Partial<PracticeSettings>) => void;
 }) {
-  const { quizMode, answerType, rigorousness, chunkSize } = settings;
+  const { quizMode, answerType, rigorousness, chunkSize, fuzzyMatching } = settings;
 
   return (
     <div className="grid gap-6 sm:grid-cols-2">
@@ -313,6 +316,21 @@ function QuizControls({
         onChange={(value) => onChange({ chunkSize: value })}
         helper="How many cards to pull into each rotation."
       />
+      <div className="flex items-center justify-between gap-4 sm:col-span-2">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="fuzzy-matching">Fuzzy correct matching</Label>
+          <p id="fuzzy-matching-description" className="text-xs text-muted-foreground">
+            Accept minor typos and partial word overlap. Turn off for exact matches that ignore capitalization and
+            surrounding spaces only.
+          </p>
+        </div>
+        <Switch
+          id="fuzzy-matching"
+          checked={fuzzyMatching}
+          onCheckedChange={(checked) => onChange({ fuzzyMatching: checked })}
+          aria-describedby="fuzzy-matching-description"
+        />
+      </div>
     </div>
   );
 }
@@ -428,6 +446,28 @@ function PracticePage() {
 
     const loadPreferences = async () => {
       let applied = false;
+      let storedSettings: Partial<PracticeSettings> | null = null;
+
+      if (preferenceStorageKey) {
+        try {
+          const raw = localStorage.getItem(preferenceStorageKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            storedSettings = {
+              quizMode: parsed.quizMode as QuizMode,
+              answerType: parsed.answerType as AnswerType,
+              rigorousness: parsed.rigorousness as RigorousnessLevel | undefined,
+              chunkSize: typeof parsed.chunkSize === "number" ? parsed.chunkSize : undefined,
+              ...(typeof parsed.fuzzyMatching === "boolean"
+                ? { fuzzyMatching: parsed.fuzzyMatching }
+                : {}),
+            };
+          }
+        } catch (error) {
+          console.error("Failed to read stored preferences", error);
+        }
+      }
+
       if (user) {
         const { data, error } = await getUserSetPreferences(setId);
         if (error) {
@@ -439,27 +479,17 @@ function PracticePage() {
             answerType: data.answer_type,
             rigorousness: (data.rigorousness ?? undefined) as RigorousnessLevel | undefined,
             chunkSize: typeof data.chunk_size === "number" ? data.chunk_size : undefined,
+            ...(typeof storedSettings?.fuzzyMatching === "boolean"
+              ? { fuzzyMatching: storedSettings.fuzzyMatching }
+              : {}),
           });
           applied = true;
         }
       }
 
-      if (!applied && preferenceStorageKey) {
-        try {
-          const raw = localStorage.getItem(preferenceStorageKey);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            applyPreferences({
-              quizMode: parsed.quizMode as QuizMode,
-              answerType: parsed.answerType as AnswerType,
-              rigorousness: parsed.rigorousness as RigorousnessLevel | undefined,
-              chunkSize: typeof parsed.chunkSize === "number" ? parsed.chunkSize : undefined,
-            });
-            applied = true;
-          }
-        } catch (error) {
-          console.error("Failed to read stored preferences", error);
-        }
+      if (!applied && storedSettings) {
+        applyPreferences(storedSettings);
+        applied = true;
       }
 
       if (applied) {
@@ -504,9 +534,9 @@ function PracticePage() {
 
   const validateAnswer = useCallback(
     (guess: string) => {
-      return isShortAnswerCorrect(guess, correctAnswer);
+      return isShortAnswerCorrect(guess, correctAnswer, state.settings.fuzzyMatching);
     },
-    [correctAnswer],
+    [correctAnswer, state.settings.fuzzyMatching],
   );
 
   const handleAnswer = useCallback(
