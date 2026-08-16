@@ -13,12 +13,18 @@ import { ChevronLeft, ChevronRight, PenTool, Brain, /*Puzzle,*/ Star, Edit } fro
 import Link from "next/link";
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { starFlashcard, unstarFlashcard } from "@/lib/data";
+import { cn } from "@/lib/utils";
 
 const filterCategories = ["New", "Challenging", "Familiar", "Proficient", "Starred"];
 
 type FlashcardProps = {
   flashcards: Flashcard[];
   flashcardAttempts: FlashcardAttempt[];
+};
+
+type FlashcardTableProps = FlashcardProps & {
+  starredFlashcardIds: number[];
 };
 
 const FlashcardsDisplay = (props: FlashcardProps) => {
@@ -309,13 +315,35 @@ const PracticeSummary = (props: FlashcardProps) => {
   );
 };
 
-const FlashcardTable = (props: FlashcardProps) => {
+const FlashcardTable = (props: FlashcardTableProps) => {
   const flashcards = props.flashcards;
-  const { flashcardAttempts } = props;
-  const [starredCards, setStarredCards] = useState<number[]>([]);
+  const { flashcardAttempts, starredFlashcardIds } = props;
+  const { user } = useAuth();
+  const [starredCards, setStarredCards] = useState<number[]>(starredFlashcardIds);
   const [activeFilter, setActiveFilter] = useState("All");
-  const toggleStar = (id: number) => {
-    setStarredCards((prev) => (prev.includes(id) ? prev.filter((cardId) => cardId !== id) : [...prev, id]));
+
+  useEffect(() => {
+    setStarredCards(starredFlashcardIds);
+  }, [starredFlashcardIds]);
+
+  const toggleStar = async (id: number) => {
+    if (!user) {
+      window.alert("Sign in to save starred flashcards.");
+      return;
+    }
+
+    const isStarred = starredCards.includes(id);
+    const { error } = isStarred ? await unstarFlashcard(user.id, id) : await starFlashcard(user.id, id);
+
+    if (error) {
+      console.error("Failed to update starred flashcard:", error);
+      window.alert("We couldn't update this star. Please try again.");
+      return;
+    }
+
+    setStarredCards((current) =>
+      isStarred ? current.filter((cardId) => cardId !== id) : [...current, id],
+    );
   };
 
   const filteredCards =
@@ -341,7 +369,7 @@ const FlashcardTable = (props: FlashcardProps) => {
               variant={activeFilter === category ? "default" : "outline"}
               onClick={() => setActiveFilter(category)}
             >
-              {category === "Starred" && <Star className="h-4 w-4 mr-2" />}
+              {category === "Starred" && <Star data-icon="inline-start" />}
               {category}
             </Button>
           ))}
@@ -357,35 +385,40 @@ const FlashcardTable = (props: FlashcardProps) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredCards.map((card) => (
-            <TableRow key={card.uid}>
-              <TableCell>{card.term}</TableCell>
-              <TableCell>{card.definition}</TableCell>
-              <TableCell>{getDifficultyString(card, flashcardAttempts)}</TableCell>
-              <TableCell>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => toggleStar(card.uid)}
-                    aria-label={starredCards.includes(card.uid) ? "Unstar" : "Star"}
-                  >
-                    <Star className={`h-4 w-4 ${starredCards.includes(card.uid) ? "fill-yellow-400" : ""}`} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      /* Implement edit functionality */
-                    }}
-                    aria-label="Edit"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+          {filteredCards.map((card) => {
+            const isStarred = starredCards.includes(card.uid);
+
+            return (
+              <TableRow key={card.uid}>
+                <TableCell>{card.term}</TableCell>
+                <TableCell>{card.definition}</TableCell>
+                <TableCell>{getDifficultyString(card, flashcardAttempts)}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => toggleStar(card.uid)}
+                      aria-label={isStarred ? "Unstar" : "Star"}
+                      aria-pressed={isStarred}
+                    >
+                      <Star data-icon="inline-start" className={cn(isStarred && "fill-primary text-primary")} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        /* Implement edit functionality */
+                      }}
+                      aria-label="Edit"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
@@ -393,7 +426,7 @@ const FlashcardTable = (props: FlashcardProps) => {
 };
 
 const StudySet = () => {
-  const { flashcards, flashcardAttempts, status, set } = useFlashcardData();
+  const { flashcards, flashcardAttempts, starredFlashcardIds, status, set } = useFlashcardData();
   const { user } = useAuth();
 
   const [isGlowing, setIsGlowing] = useState(true);
@@ -435,7 +468,11 @@ const StudySet = () => {
           </div>
 
           {user && <PracticeSummary flashcards={flashcards} flashcardAttempts={flashcardAttempts} />}
-          <FlashcardTable flashcards={flashcards} flashcardAttempts={flashcardAttempts} />
+          <FlashcardTable
+            flashcards={flashcards}
+            flashcardAttempts={flashcardAttempts}
+            starredFlashcardIds={starredFlashcardIds}
+          />
         </div>
       )}
     </div>

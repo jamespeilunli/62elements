@@ -1,5 +1,10 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { getFlashcardAttemptsBySetId, getFlashcardsBySetId, getSetById } from "@/lib/data";
+import {
+  getFlashcardAttemptsBySetId,
+  getFlashcardsBySetId,
+  getSetById,
+  getStarredFlashcardIds,
+} from "@/lib/data";
 import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
@@ -31,6 +36,7 @@ export const useFlashcardData = () => {
   const searchParams = useSearchParams();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [flashcardAttempts, setFlashcardAttempts] = useState<FlashcardAttempt[]>([]);
+  const [starredFlashcardIds, setStarredFlashcardIds] = useState<number[]>([]);
   const [status, setStatus] = useState<string>("Loading...");
   const [set, setSet] = useState<FlashcardSet | null>(null);
   const { user } = useAuth();
@@ -92,8 +98,17 @@ export const useFlashcardData = () => {
             responseMs: attempt.response_ms ?? 0,
           })) ?? [];
 
+        const { data: stars, error: starsError } = user
+          ? await getStarredFlashcardIds(formattedCards.map((card) => card.uid))
+          : { data: [], error: null };
+
+        if (starsError) {
+          console.error("Failed to fetch starred flashcards:", starsError);
+        }
+
         setFlashcards(formattedCards);
         setFlashcardAttempts(formattedAttempts);
+        setStarredFlashcardIds(stars?.map((star) => star.flashcard_uid) ?? []);
         setStatus("");
         localStorage.setItem("last-set", setIdStr);
       } catch (error) {
@@ -105,5 +120,5 @@ export const useFlashcardData = () => {
     fetchData();
   }, [searchParams, user]);
 
-  return { status, flashcards, flashcardAttempts, set };
+  return { status, flashcards, flashcardAttempts, starredFlashcardIds, set };
 };

@@ -17,6 +17,32 @@ export async function getFlashcardsBySetId(setId: number) {
   return { data, error };
 }
 
+export async function getStarredFlashcardIds(flashcardUids: number[]) {
+  if (flashcardUids.length === 0) {
+    return { data: [], error: null };
+  }
+
+  return supabase
+    .from("user_flashcard_stars")
+    .select("flashcard_uid")
+    .in("flashcard_uid", flashcardUids);
+}
+
+export async function starFlashcard(userId: string, flashcardUid: number) {
+  return supabase.from("user_flashcard_stars").insert({
+    user_id: userId,
+    flashcard_uid: flashcardUid,
+  });
+}
+
+export async function unstarFlashcard(userId: string, flashcardUid: number) {
+  return supabase
+    .from("user_flashcard_stars")
+    .delete()
+    .eq("user_id", userId)
+    .eq("flashcard_uid", flashcardUid);
+}
+
 export async function getSetById(setId: number) {
   const { data, error } = await supabase.from("sets").select("*").eq("id", setId).single();
 

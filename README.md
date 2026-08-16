@@ -16,7 +16,7 @@ Try it out at [62elements.vercel.app](https://62elements.vercel.app/)!
 - [x] user accounts and save progress by account
 - [x] create new flashcard sets
 - [ ] add, remove, and edit existing flashcards
-- [ ] store star status
+- [x] store star status
 - [ ] test mode
 - [ ] leaderboards
 
