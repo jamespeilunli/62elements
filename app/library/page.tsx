@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { DeleteSetButton } from "@/components/delete-set-button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getVisibleSets } from "@/lib/data";
 import { supabase } from "@/lib/supabaseClient";
@@ -45,6 +46,16 @@ export default function PopularFlashcardSets() {
     };
     fetchMyData();
   }, [user]);
+
+  const handleSetDeleted = (setId: number) => {
+    setSets((currentSets) => currentSets?.filter((set) => set.id !== setId));
+    setMySets((currentSets) => currentSets?.filter((set) => set.id !== setId));
+
+    if (localStorage.getItem("last-set") === setId.toString()) {
+      localStorage.removeItem("last-set");
+    }
+    localStorage.removeItem(`practice-preferences-${setId}`);
+  };
 
   return (
     <div className="flex flex-col bg-background">
@@ -112,10 +123,11 @@ export default function PopularFlashcardSets() {
                   <p className="text-sm text-muted-foreground mb-2">{set.category}</p>
                   <p className="text-sm">{set.cards} cards</p>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="gap-2">
                   <Link href={`/study?set-id=${set.id}`}>
                     <Button>Study Now</Button>
                   </Link>
+                  <DeleteSetButton setId={set.id} setTitle={set.title} onDeleted={handleSetDeleted} />
                 </CardFooter>
               </Card>
             ))}

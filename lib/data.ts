@@ -60,6 +60,16 @@ export async function getVisibleSets() {
   return { data, error };
 }
 
+export async function deleteSet(setId: number, userId: string) {
+  const { count, error } = await supabase
+    .from("sets")
+    .delete({ count: "exact" })
+    .eq("id", setId)
+    .eq("user_id", userId);
+
+  return { deleted: count === 1, error };
+}
+
 export type UserSetPreference = {
   user_id: string;
   set_id: number;
