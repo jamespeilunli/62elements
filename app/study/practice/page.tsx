@@ -30,6 +30,7 @@ type PracticeSettings = {
   rigorousness: RigorousnessLevel;
   chunkSize: number;
   fuzzyMatching: boolean;
+  starredOnly: boolean;
 };
 const defaultSettings: PracticeSettings = {
   quizMode: "both",
@@ -37,6 +38,7 @@ const defaultSettings: PracticeSettings = {
   rigorousness: "balanced",
   chunkSize: 7,
   fuzzyMatching: true,
+  starredOnly: false,
 };
 const mergeSettings = (base: PracticeSettings, update: Partial<PracticeSettings>): PracticeSettings => ({
   ...base,
@@ -266,10 +268,24 @@ function QuizControls({
   settings: PracticeSettings;
   onChange: (update: Partial<PracticeSettings>) => void;
 }) {
-  const { quizMode, answerType, rigorousness, chunkSize, fuzzyMatching } = settings;
+  const { quizMode, answerType, rigorousness, chunkSize, fuzzyMatching, starredOnly } = settings;
 
   return (
     <div className="grid gap-6 sm:grid-cols-2">
+      <div className="flex items-center justify-between gap-4 sm:col-span-2">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="starred-only">Only study starred cards</Label>
+          <p id="starred-only-description" className="text-xs text-muted-foreground">
+            Practice only the cards you have starred in this set.
+          </p>
+        </div>
+        <Switch
+          id="starred-only"
+          checked={starredOnly}
+          onCheckedChange={(checked) => onChange({ starredOnly: checked })}
+          aria-describedby="starred-only-description"
+        />
+      </div>
       <div className="flex items-center space-x-2">
         <Label htmlFor="quiz-mode">Quiz Mode:</Label>
         <select
@@ -377,7 +393,7 @@ function SettingsModal({
 }
 
 function PracticePage() {
-  const { status, flashcards, flashcardAttempts, set } = useFlashcardData();
+  const { status, flashcards, flashcardAttempts, starredFlashcardIds, set } = useFlashcardData();
   const { user } = useAuth();
   const [state, dispatch] = useReducer(practiceReducer, initialState);
   const setId = set?.id ?? null;
@@ -401,21 +417,26 @@ function PracticePage() {
     return state.flashcardAttempts.filter((attempt) => attempt.flashcardUid === currentCard.uid);
   }, [currentCard, state.flashcardAttempts]);
 
-  const hasInitialized = useRef(false);
+  const practiceCards = useMemo(() => {
+    if (!state.settings.starredOnly) return flashcards;
+    const starredIds = new Set(starredFlashcardIds);
+    return flashcards.filter((card) => starredIds.has(card.uid));
+  }, [flashcards, starredFlashcardIds, state.settings.starredOnly]);
   const hasLoadedPreferences = useRef(false);
   const questionStartRef = useRef<number | null>(null);
   const preferenceStorageKey = useMemo(() => (setId !== null ? `practice-preferences-${setId}` : null), [setId]);
 
   const shuffleCards = useCallback(() => {
     // shuffle: https://stackoverflow.com/a/46545530
-    const shuffled = [...flashcards]
+    const shuffled = [...practiceCards]
       .map((value) => ({ value, sort: Math.random() }))
       .sort((a, b) => a.sort - b.sort)
       .map(({ value }) => value);
+    algorithm.setConfig(algorithmConfig);
     dispatch({ type: "SHUFFLE_CARDS", cards: shuffled });
     dispatch({ type: "NEXT_QUESTION", algorithm });
     dispatch({ type: "PREPARE_QUESTION" });
-  }, [flashcards, algorithm]);
+  }, [practiceCards, algorithm, algorithmConfig]);
 
   const applyPreferences = useCallback(
     (settings: Partial<PracticeSettings>) => {
@@ -458,6 +479,9 @@ function PracticePage() {
               answerType: parsed.answerType as AnswerType,
               rigorousness: parsed.rigorousness as RigorousnessLevel | undefined,
               chunkSize: typeof parsed.chunkSize === "number" ? parsed.chunkSize : undefined,
+              ...(typeof parsed.starredOnly === "boolean"
+                ? { starredOnly: parsed.starredOnly }
+                : {}),
               ...(typeof parsed.fuzzyMatching === "boolean"
                 ? { fuzzyMatching: parsed.fuzzyMatching }
                 : {}),
@@ -479,6 +503,9 @@ function PracticePage() {
             answerType: data.answer_type,
             rigorousness: (data.rigorousness ?? undefined) as RigorousnessLevel | undefined,
             chunkSize: typeof data.chunk_size === "number" ? data.chunk_size : undefined,
+            ...(typeof storedSettings?.starredOnly === "boolean"
+              ? { starredOnly: storedSettings.starredOnly }
+              : {}),
             ...(typeof storedSettings?.fuzzyMatching === "boolean"
               ? { fuzzyMatching: storedSettings.fuzzyMatching }
               : {}),
@@ -507,11 +534,8 @@ function PracticePage() {
   }, [currentSettings, preferenceStorageKey]);
 
   useEffect(() => {
-    if (flashcards.length > 0 && !hasInitialized.current) {
-      shuffleCards();
-      hasInitialized.current = true;
-    }
-  }, [flashcards, shuffleCards]);
+    shuffleCards();
+  }, [shuffleCards]);
 
   const { question, correctAnswer } = useMemo(() => {
     if (!currentCard) return { question: "", correctAnswer: "" };
@@ -523,13 +547,13 @@ function PracticePage() {
 
   const options = useMemo(() => {
     if (!currentCard) return [];
-    const options = [correctAnswer];
-    while (new Set(options).size < Math.min(4, state.flashcards.length)) {
-      const randomCard = state.flashcards[Math.floor(Math.random() * state.flashcards.length)];
-      const randomAnswer = state.isTermQuestion ? randomCard.term : randomCard.definition;
-      if (!options.includes(randomAnswer)) options.push(randomAnswer);
-    }
-    return options.sort(() => Math.random() - 0.5);
+    const distractors = Array.from(
+      new Set(state.flashcards.map((card) => (state.isTermQuestion ? card.term : card.definition))),
+    )
+      .filter((answer) => answer !== correctAnswer)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3);
+    return [correctAnswer, ...distractors].sort(() => Math.random() - 0.5);
   }, [currentCard, state.isTermQuestion, state.flashcards, correctAnswer]);
 
   const validateAnswer = useCallback(
@@ -645,8 +669,8 @@ function PracticePage() {
     <div className="container mx-auto px-4 py-8">
       <BackLink href="/study" label="Back to Study" className="mb-4" />
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">{currentCard ? "Practice Mode" : status}</h1>
-        {currentCard && (
+        <h1 className="text-3xl font-bold">{flashcards.length > 0 ? "Practice Mode" : status}</h1>
+        {flashcards.length > 0 && (
           <Button
             variant="outline"
             onClick={() => setIsSettingsOpen(true)}
@@ -657,6 +681,13 @@ function PracticePage() {
           </Button>
         )}
       </div>
+      {!status && state.settings.starredOnly && practiceCards.length === 0 && (
+        <p className="text-muted-foreground">
+          {user
+            ? "No starred cards in this set. Star cards on the study page or turn off “Only study starred cards” in practice settings."
+            : "Sign in to study your starred cards, or turn off “Only study starred cards” in practice settings."}
+        </p>
+      )}
       {currentCard && (
         <div>
           <Card className="mb-6">
